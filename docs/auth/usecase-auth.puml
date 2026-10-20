@@ -1,0 +1,43 @@
+@startuml
+title Phân Hệ Xác Thực (Auth) - Use Case Diagram
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+skinparam actor {
+    BackgroundColor #F8FAFC
+    BorderColor #1E293B
+}
+
+skinparam usecase {
+    BackgroundColor #F0FDF4
+    BorderColor #166534
+    ArrowColor #334155
+}
+
+actor "Khách hàng (Customer)" as Customer
+actor "Hệ thống BrewLite (System)" as System
+
+rectangle "«Subsystem» Phân Hệ Xác Thực & Tài Khoản (Auth)" {
+    usecase "UC-AUTH-01: Đăng ký tài khoản" as UC_Register
+    usecase "UC-AUTH-02: Đăng nhập hệ thống" as UC_Login
+    usecase "UC-AUTH-03: Xác thực JWT & Guard" as UC_VerifyToken
+    usecase "Băm mật khẩu (bcrypt hash)" as UC_HashPassword
+    usecase "Phát hành Access Token (JWT)" as UC_IssueJWT
+    usecase "Lưu thông tin User vào DB" as UC_SaveUser
+
+    UC_Register .> UC_HashPassword : <<include>>
+    UC_Register .> UC_SaveUser : <<include>>
+    
+    UC_Login .> UC_IssueJWT : <<include>>
+    UC_VerifyToken .> UC_IssueJWT : <<extend>>
+}
+
+Customer -- UC_Register
+Customer -- UC_Login
+Customer -- UC_VerifyToken
+
+System -- UC_VerifyToken
+
+@enduml

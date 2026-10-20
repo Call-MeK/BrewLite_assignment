@@ -1,0 +1,27 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Khách hàng\n(Customer)" as Customer
+
+rectangle "feat/order-history usecase uml" {
+  usecase "Xem lịch sử đơn hàng\n(UC-ORDER-HISTORY)" as UC_History
+  usecase "Xác thực phiên đăng nhập\n(JWT)" as UC_Auth
+  usecase "Đăng nhập" as UC_Login
+  usecase "Lọc theo trạng thái" as UC_Filter
+  usecase "Tải thêm / chuyển trang" as UC_Paging
+  usecase "Xem chi tiết đơn hàng" as UC_Detail
+  usecase "Thử lại khi gặp lỗi" as UC_Retry
+}
+
+Customer --> UC_History
+
+UC_History ..> UC_Auth    : <<include>>
+UC_Login   ..> UC_Auth    : <<include>>
+UC_Login   ..> UC_History : <<extend>>
+UC_Filter  ..> UC_History : <<extend>>
+UC_Paging  ..> UC_History : <<extend>>
+UC_Detail  ..> UC_History : <<extend>>
+UC_Retry   ..> UC_History : <<extend>>
+@enduml

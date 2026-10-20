@@ -1,0 +1,103 @@
+@startuml
+title Activity Diagram – Xem lịch sử đơn hàng (UC-ORDER-HISTORY)
+
+|Khách hàng|
+start
+:Mở mục "Lịch sử đơn hàng";
+
+|Frontend|
+if (Đã đăng nhập và JWT hợp lệ?) then (không)
+  |Khách hàng|
+  :Đi tới màn hình Đăng nhập;
+  if (Đăng nhập thành công?) then (không)
+    :Hiển thị lỗi đăng nhập;
+    stop
+  else (có)
+  endif
+else (có)
+endif
+
+repeat
+  |Frontend|
+  :Hiển thị Loading State;
+  :Gửi GET /api/v1/orders/me?page&limit&status\nHeader: Authorization: Bearer <JWT>;
+
+  |Backend|
+  if (JwtAuthGuard: token hợp lệ?) then (không)
+    :Trả 401 Unauthorized;
+    |Frontend|
+    :Yêu cầu đăng nhập lại\n(không lặp request vô hạn);
+    stop
+  else (có)
+    :Lấy userId từ JWT;
+    if (Query hợp lệ?\n(page ≥ 1, 1 ≤ limit ≤ 50, status thuộc enum)) then (không)
+      :Trả 400 Bad Request\n(message là mảng lỗi validate);
+      |Frontend|
+      :Hiển thị lỗi, không gửi lại query sai;
+      stop
+    else (có)
+      :Lọc theo userId + status (nếu có);
+      :Sắp xếp createdAt DESC, id DESC;
+      :Phân trang và trả 200 OK\n(data + pagination);
+    endif
+  endif
+
+  |Frontend|
+  if (Lỗi mạng / timeout / 5xx?) then (có)
+    :Hiển thị Error State\nvà nút "Thử lại";
+    |Khách hàng|
+    if (Chọn "Thử lại"?) then (có)
+      note right: Gửi lại cùng page và status
+    else (không)
+      stop
+    endif
+  else (không)
+    if (data rỗng?) then (có)
+      |Frontend|
+      :Hiển thị Empty State;
+      |Khách hàng|
+      if (Xóa bộ lọc?) then (có)
+        |Frontend|
+        :Bỏ status, đặt page = 1;
+      else (không)
+        :Quay lại menu;
+        stop
+      endif
+    else (không)
+      |Frontend|
+      :Hiển thị danh sách lịch sử\n(mã đơn, thời điểm, trạng thái, tổng tiền);
+      |Khách hàng|
+      switch (Chọn thao tác?)
+      case (Lọc theo trạng thái)
+        |Frontend|
+        :Đặt page = 1, gửi status mới;
+      case (Tải thêm)
+        |Frontend|
+        if (hasNextPage = true?) then (có)
+          :page = page + 1\n(giữ nguyên limit, status);
+        else (không)
+          :Dừng tải thêm\n(ẩn/disable "Xem thêm");
+          stop
+        endif
+      case (Mở một đơn)
+        |Frontend|
+        :Điều hướng /orders/{orderId};
+        |Backend|
+        :GET /api/v1/orders/:id\nKiểm tra Order.userId = userId trong JWT;
+        if (Đơn tồn tại và thuộc user?) then (có)
+          :Trả 200 OK\n(Order + OrderItem);
+          |Frontend|
+          :Hiển thị Order Detail;
+        else (không)
+          :Trả 404 Not Found;
+          |Frontend|
+          :Hiển thị thông báo không tìm thấy đơn;
+        endif
+        stop
+      endswitch
+    endif
+  endif
+repeat while (Cần gọi lại API?) is (có)
+
+stop
+@enduml

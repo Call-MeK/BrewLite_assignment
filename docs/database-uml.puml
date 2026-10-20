@@ -1,0 +1,196 @@
+@startuml
+title UML Database / Class Diagram - Hệ Thống BrewLite (Full Schema)
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam roundcorner 8
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #2D6BE4
+    HeaderBackgroundColor #0A0E1A
+    HeaderFontColor #FFFFFF
+}
+
+enum OrderStatus <<enumeration>> {
+  PENDING
+  PAID
+  PREPARING
+  READY
+  COMPLETED
+  PAYMENT_FAILED
+  CANCELLED
+}
+
+enum PaymentMethod <<enumeration>> {
+  E_WALLET
+  BANK_CARD
+}
+
+enum PaymentStatus <<enumeration>> {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ProductSize <<enumeration>> {
+  S
+  M
+  L
+}
+
+enum LoyaltyTransactionType <<enumeration>> {
+  EARNED
+  SPENT
+  REFUNDED
+}
+
+class "User (users)" as User {
+  + id : String [PK] <<cuid>>
+  + email : String [UK]
+  + password_hash : String
+  + full_name : String?
+  + loyalty_points : Int = 0
+  + created_at : DateTime
+  + updated_at : DateTime
+}
+
+class "Category (categories)" as Category {
+  + id : String [PK] <<cuid>>
+  + name : String [UK]
+  + slug : String [UK]
+  + display_order : Int = 0
+  + created_at : DateTime
+  + updated_at : DateTime
+}
+
+class "Product (products)" as Product {
+  + id : String [PK] <<cuid>>
+  + category_id : String? [FK]
+  + name : String
+  + base_price : Decimal(12,0)
+  + image_url : String?
+  + stock : Int = 0
+  + version : Int = 0 <<OptimisticLock>>
+  + is_available : Boolean = true
+  + created_at : DateTime
+  + updated_at : DateTime
+}
+
+class "ProductSizePrice (product_size_prices)" as ProductSizePrice {
+  + id : String [PK] <<cuid>>
+  + product_id : String [FK]
+  + size : ProductSize
+  + price_adjustment : Decimal(12,0) = 0
+}
+
+class "Topping (toppings)" as Topping {
+  + id : String [PK] <<cuid>>
+  + name : String [UK]
+  + price : Decimal(12,0)
+  + stock : Int = 100
+  + is_available : Boolean = true
+  + created_at : DateTime
+  + updated_at : DateTime
+}
+
+class "Promotion (promotions)" as Promotion {
+  + id : String [PK] <<cuid>>
+  + code : String [UK]
+  + description : String?
+  + discount_percent : Int?
+  + discount_amount : Decimal(12,0)?
+  + max_discount : Decimal(12,0)?
+  + min_order_amount : Decimal(12,0) = 0
+  + start_date : DateTime
+  + end_date : DateTime?
+  + is_active : Boolean = true
+}
+
+class "Order (orders)" as Order {
+  + id : String [PK] <<cuid>>
+  + order_number : Int [UK] <<autoincrement>>
+  + user_id : String [FK]
+  + promotion_id : String? [FK]
+  + status : OrderStatus = PENDING
+  + total_amount : Decimal(12,0)
+  + discount_amount : Decimal(12,0) = 0
+  + final_amount : Decimal(12,0)
+  + points_earned : Int = 0
+  + paid_at : DateTime?
+  + version : Int = 0 <<StateLock>>
+  + created_at : DateTime
+  + updated_at : DateTime
+}
+
+class "OrderItem (order_items)" as OrderItem {
+  + id : String [PK] <<cuid>>
+  + order_id : String [FK]
+  + product_id : String [FK]
+  + size : ProductSize = M
+  + quantity : Int = 1
+  + unit_price : Decimal(12,0)
+  + line_total : Decimal(12,0)
+}
+
+class "OrderItemTopping (order_item_toppings)" as OrderItemTopping {
+  + id : String [PK] <<cuid>>
+  + order_item_id : String [FK]
+  + topping_id : String [FK]
+  + price : Decimal(12,0)
+}
+
+class "Payment (payments)" as Payment {
+  + id : String [PK] <<cuid>>
+  + order_id : String [FK]
+  + idempotency_key : String [UK]
+  + request_hash : String?
+  + amount : Decimal(12,0)
+  + method : PaymentMethod
+  + status : PaymentStatus = PENDING
+  + failure_reason : String?
+  + transaction_ref : String?
+  + created_at : DateTime
+}
+
+class "LoyaltyTransaction (loyalty_transactions)" as LoyaltyTransaction {
+  + id : String [PK] <<cuid>>
+  + user_id : String [FK]
+  + order_id : String? [FK]
+  + points : Int
+  + type : LoyaltyTransactionType
+  + reason : String
+  + created_at : DateTime
+}
+
+class "OrderStatusHistory (order_status_history)" as OrderStatusHistory {
+  + id : String [PK] <<cuid>>
+  + order_id : String [FK]
+  + from_status : OrderStatus
+  + to_status : OrderStatus
+  + changed_by : String?
+  + reason : String?
+  + created_at : DateTime
+}
+
+' Relationships & Multiplicities
+Category "1" o-- "0..*" Product : classifies
+Product "1" *-- "1..*" ProductSizePrice : sizes
+User "1" *-- "0..*" Order : places
+User "1" *-- "0..*" LoyaltyTransaction : owns
+Promotion "1" o-- "0..*" Order : applied_to
+Order "1" *-- "1..*" OrderItem : contains
+Order "1" *-- "0..*" Payment : payments (1-N retry)
+Order "1" *-- "0..*" OrderStatusHistory : audit_trail
+Product "1" <-- "0..*" OrderItem : references
+OrderItem "1" *-- "0..*" OrderItemTopping : includes
+Topping "1" <-- "0..*" OrderItemTopping : references
+
+Order ..> OrderStatus : uses
+Payment ..> PaymentMethod : uses
+Payment ..> PaymentStatus : uses
+OrderItem ..> ProductSize : uses
+LoyaltyTransaction ..> LoyaltyTransactionType : uses
+
+@enduml

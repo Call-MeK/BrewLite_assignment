@@ -1,0 +1,32 @@
+@startuml
+left to right direction
+skinparam Maincolor #0052cc
+skinparam Backgroundcolor transparent
+
+actor "Khách hàng" as Client
+
+rectangle "Phân hệ Giỏ hàng (Cart State & Checkout)" {
+  usecase "Xem Giỏ hàng" as UC_View
+  usecase "Cập nhật Số lượng / Xóa món" as UC_Edit
+  usecase "Tự động tính Tổng tiền & Badge" as UC_Calc
+  
+  usecase "Tiến hành Đặt hàng (Checkout)" as UC_Checkout
+  usecase "Xác thực Đăng nhập (JWT Auth)" as UC_Auth
+  usecase "Kiểm tra Tồn kho & Đơn giá" as UC_Validate
+  usecase "Cảnh báo Lỗi (Hết hàng / Lệch giá)" as UC_Error
+}
+
+Client --> UC_View
+Client --> UC_Edit
+Client --> UC_Checkout
+
+UC_Edit ..> UC_Calc : <<include>>
+UC_View ..> UC_Calc : <<include>>
+
+UC_Checkout ..> UC_Validate : <<include>>
+UC_Checkout ..> UC_Auth : <<include>>
+
+UC_Error ..> UC_Checkout : <<extend>>
+note bottom of UC_Error : Kích hoạt khi DB báo hết tồn kho,\nngưng bán hoặc dữ liệu request không hợp lệ
+
+@enduml

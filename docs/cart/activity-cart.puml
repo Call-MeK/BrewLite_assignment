@@ -1,0 +1,99 @@
+@startuml
+title Activity Diagram: Quản lý giỏ hàng (Cart State & Checkout)
+
+|Khách hàng|
+start
+:Mở giao diện Giỏ hàng (Cart Drawer / Page);
+
+|Frontend (Next.js / Zustand)|
+:Đọc trạng thái Giỏ hàng từ Local Storage (Zustand persist);
+if (Giỏ hàng trống?) then (Có)
+  :Hiển thị giao diện Empty State;
+  :Vô hiệu hóa nút "Thanh toán";
+  stop
+else (Không)
+  :Hiển thị danh sách món (Size, Topping, Số lượng);
+  :Tính toán và hiển thị Tổng tiền & Badge giỏ hàng;
+endif
+
+|Khách hàng|
+repeat
+  :Thực hiện thay đổi (Tăng/Giảm số lượng hoặc Xóa dòng món);
+  |Frontend (Next.js / Zustand)|
+  :Cập nhật State nội bộ qua cartItemId;
+  :Tính lại Tổng tiền (unitPrice + toppings) * quantity;
+  :Lưu trạng thái vào Local Storage;
+repeat while (Tiếp tục chỉnh sửa?) is (Có)
+
+|Khách hàng|
+:Nhấn nút "Thanh toán";
+
+|Frontend (Next.js / Zustand)|
+if (Đã đăng nhập và có Token JWT?) then (Chưa)
+  :Lưu trạng thái giỏ hàng;
+  :Chuyển hướng sang trang Đăng nhập (/auth/login);
+  |Khách hàng|
+  :Đăng nhập thành công;
+  |Frontend (Next.js / Zustand)|
+  :Quay trở lại Giỏ hàng để tiếp tục;
+else (Đã đăng nhập)
+endif
+
+if (Đã có pendingOrderId và giỏ hàng không đổi?) then (Có)
+  :Tái sử dụng pendingOrderId, chuyển thẳng sang Thanh toán;
+  stop
+else (Không / Giỏ hàng đã đổi)
+  if (Đã có pendingOrderId cũ?) then (Có)
+    :Gọi POST /api/v1/orders/:id/cancel hủy đơn cũ (Quyết định D2, D6);
+  else (Không)
+  endif
+endif
+
+:Bật Loading State (Chặn tương tác);
+:Gửi Request Payload (POST /api/v1/orders) kèm Bearer JWT (và promotionCode? - Quyết định D7);
+
+|Backend (NestJS)|
+:Tiếp nhận Request qua AuthGuard (trích xuất req.user.sub - Quyết định D4);
+:Kiểm tra Class-validator DTO (Định dạng, quantity 1..99 - Quyết định D5);
+if (Dữ liệu DTO hợp lệ?) then (Không)
+  :Trả lỗi 400 Bad Request (ValidationPipe);
+else (Có)
+  :Truy vấn DB (Product, ProductSizePrice, Topping);
+  :Kiểm tra isAvailable và Stock (Tồn kho);
+  :Tính toán lại giá tiền từ DB & áp dụng khuyến mãi;
+  
+  if (Đủ tồn kho & Hợp lệ?) then (Không)
+    :Hủy thao tác tạo đơn;
+    :Trả lỗi 400 Bad Request (Hết hàng / Lệch giá);
+  else (Có)
+    :Trừ tồn kho Product (Optimistic lock) và Topping (Conditional update);
+    :Tạo bản ghi bảng Order (Trạng thái PENDING, tính finalAmount);
+    :Tạo các bản ghi OrderItem (quantity, unitPrice, lineTotal);
+    :Tạo các bản ghi OrderItemTopping;
+    :Trả về mã id đơn hàng và statusCode 201;
+  endif
+endif
+
+|Frontend (Next.js / Zustand)|
+if (Kết quả trả về) then (Thành công 201)
+  :Tắt Loading;
+  :Lưu pendingOrderId vào Zustand Store (GIỮ NGUYÊN giỏ hàng, KHÔNG clearCart - Quyết định D2);
+  :Chuyển hướng Khách hàng sang màn hình Thanh toán (/checkout/:id);
+  note right
+    Chỉ xóa giỏ hàng (clearCart() và xóa pendingOrderId)
+    khi Payment SUCCESS (đơn chuyển sang PAID - Quyết định D2).
+  end note
+  stop
+else (Lỗi 400 / 401)
+  :Tắt Loading;
+  if (Lỗi 401 Unauthorized?) then (Có)
+    :Thông báo phiên đăng nhập hết hạn (vẫn giữ giỏ hàng);
+    :Chuyển hướng sang trang Đăng nhập;
+  else (Lỗi nghiệp vụ / DTO)
+    :Hiển thị thông báo Toast cảnh báo lỗi (Hết hàng, đổi giá, dữ liệu lỗi);
+    |Khách hàng|
+    :Xem cảnh báo và điều chỉnh lại Giỏ hàng;
+  endif
+  detach
+endif
+@enduml

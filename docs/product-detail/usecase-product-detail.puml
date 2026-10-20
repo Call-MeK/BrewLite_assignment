@@ -1,0 +1,48 @@
+@startuml
+title Use Case Diagram - Product Detail
+
+left to right direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam ArrowColor #24476B
+skinparam usecase {
+    BackgroundColor #E5F2FF
+    BorderColor #3984C6
+    FontColor #17365D
+}
+skinparam actor {
+    BorderColor #24476B
+    FontColor #17365D
+}
+
+actor "Customer" as C
+actor "Cart Module" as Cart
+
+rectangle "BrewLite - Product Detail" {
+    usecase "UC-PROD-01\nView Product Detail" as UC01
+    usecase "UC-PROD-02\nCustomize Product" as UC02
+    usecase "Select Size" as UC02A
+    usecase "Select / Remove Topping" as UC02B
+    usecase "UC-PROD-03\nUpdate Estimated Price\n& Check Availability" as UC03
+    usecase "UC-PROD-04\nAdd Configured Product\nto Cart" as UC04
+}
+
+C --> UC01
+C --> UC02
+C --> UC04
+
+UC02 .> UC02A : <<include>>
+UC02 .> UC02B : <<include>>
+UC02 .> UC03 : <<include>>
+UC04 .> UC03 : <<include>>
+UC04 --> Cart : send product payload
+
+note right of UC04
+  Transfers configured product data
+  to Cart only.
+  No order creation or payment.
+end note
+
+@enduml

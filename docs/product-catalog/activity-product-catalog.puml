@@ -1,0 +1,116 @@
+@startuml
+title Activity Diagram - Phân hệ Danh mục sản phẩm (Product Catalog)
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam activity {
+    BackgroundColor #F0FDF4
+    BorderColor #15803D
+    DiamondBackgroundColor #FEF3C7
+    DiamondBorderColor #D97706
+}
+
+|Khách hàng|
+start
+:Mở trang thực đơn (/menu);
+
+|Frontend|
+:Hiển thị trạng thái đang tải (Loading Skeleton);
+:Gọi GET /api/v1/products đến Backend;
+
+|Backend|
+:Nhận yêu cầu;
+:Truy vấn CSDL:
+- isAvailable = true
+- stock > 0
+- Sắp xếp tên tăng dần (name ASC);
+
+if (Truy vấn thành công?) then (Có)
+    :Trả về danh sách sản phẩm
+    (Format TransformInterceptor);
+else (Không)
+    :Trả về lỗi API 500
+    (Format AllExceptionsFilter);
+endif
+
+|Frontend|
+if (Truy vấn thành công?) then (Có)
+    :Tiếp nhận danh sách sản phẩm;
+    :Trích xuất Category Tabs:
+    - Tab "Tất cả"
+    - Các distinct categoryName
+    - Tab "Khác" (nếu có món null category);
+
+    if (Danh sách sản phẩm rỗng?) then (Có)
+        :Hiển thị thông báo quán chưa mở bán món nào
+        (Empty Menu State);
+        stop
+    else (Không)
+        :Hiển thị danh sách sản phẩm ban đầu;
+    endif
+
+    |Khách hàng|
+    if (Muốn tìm kiếm?) then (Có)
+        :Nhập từ khóa vào ô tìm kiếm;
+
+        |Frontend|
+        :Loại bỏ khoảng trắng thừa (trim);
+        :Chuyển về chữ thường;
+        :Bỏ dấu tiếng Việt (removeVietnameseTones);
+        :Lọc theo tên món không phân biệt dấu/hoa thường;
+    else (Không)
+    endif
+
+    |Khách hàng|
+    if (Muốn lọc danh mục?) then (Có)
+        :Chọn tab danh mục;
+
+        |Frontend|
+        if (Tab được chọn là "Tất cả"?) then (Có)
+            :Bỏ điều kiện lọc danh mục;
+        else if (Tab được chọn là "Khác"?) then (Có)
+            :Lọc sản phẩm có categoryName == null;
+        else (Danh mục cụ thể)
+            :Lọc theo categoryName tương ứng;
+        endif
+    else (Không)
+    endif
+
+    |Frontend|
+    :Kết hợp điều kiện tìm kiếm và lọc danh mục;
+
+    if (Có kết quả phù hợp?) then (Có)
+        :Hiển thị danh sách thẻ sản phẩm (ProductCard);
+        |Khách hàng|
+        :Xem thông tin món (tên, ảnh, giá, sizePrices);
+        :Nhấn vào món để xem chi tiết;
+        stop
+    else (Không)
+        :Hiển thị thông báo không tìm thấy kết quả
+        kèm nút "Xóa bộ lọc";
+        |Khách hàng|
+        if (Nhấn "Xóa bộ lọc"?) then (Có)
+            |Frontend|
+            :Reset ô tìm kiếm và chọn tab "Tất cả";
+            :Hiển thị lại toàn bộ sản phẩm;
+            stop
+        else (Không)
+            stop
+        endif
+    endif
+
+else (Không)
+    :Hiển thị thông báo lỗi mạng/kết nối (Error State);
+    :Hiển thị nút "Thử lại" (Retry);
+
+    |Khách hàng|
+    if (Chọn "Thử lại"?) then (Có)
+        |Frontend|
+        :Gọi lại API GET /api/v1/products;
+        detach
+    else (Không)
+        stop
+    endif
+endif
+
+@enduml

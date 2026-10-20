@@ -1,0 +1,70 @@
+@startuml
+title Activity Diagram - Luồng Đăng Ký & Đăng Nhập (Auth Flow)
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam roundcorner 8
+
+|Khách hàng (Client/UI)|
+start
+:Mở Modal/Trang Đăng ký hoặc Đăng nhập;
+
+if (Chọn hành động?) then (Đăng ký mới)
+  :Nhập Email, Password (>= 6 ký tự), Full Name;
+  :Nhấn nút "Tạo tài khoản";
+  |Hệ thống Backend (NestJS)|
+  :ValidationPipe kiểm tra DTO đầu vào;
+  if (Email hợp lệ & Password >= 6 ký tự?) then (Hợp lệ)
+    :Truy vấn kiểm tra Email trong Database;
+    if (Email đã tồn tại?) then (Đã tồn tại)
+      :Ném lỗi 409 Conflict: "Email đã được đăng ký";
+      |Khách hàng (Client/UI)|
+      :Hiển thị thông báo lỗi trên UI;
+      stop
+    else (Email chưa có)
+      :Băm mật khẩu an toàn bằng bcrypt (Salt = 10);
+      :Tạo bản ghi mới trong bảng 'users';
+      :Ký và phát hành mã JWT Token (hạn 7 ngày);
+      |Khách hàng (Client/UI)|
+      :Nhận JWT Token;
+      :Lưu Token vào LocalStorage/Cookie;
+      :Cập nhật Header: Hiển thị tên người dùng;
+    endif
+  else (Lỗi cú pháp DTO)
+    :Ném lỗi 400 Bad Request;
+    |Khách hàng (Client/UI)|
+    :Hiển thị thông báo lỗi kiểm tra dữ liệu;
+    stop
+  endif
+else (Đăng nhập)
+  :Nhập Email và Password;
+  :Nhấn nút "Đăng nhập";
+  |Hệ thống Backend (NestJS)|
+  :ValidationPipe kiểm tra định dạng;
+  :Tìm kiếm người dùng theo Email;
+  if (Tìm thấy người dùng?) then (Có)
+    :So sánh Password với password_hash qua bcrypt.compare();
+    if (Khớp mật khẩu?) then (Đúng)
+      :Ký và tạo mã JWT Token (payload: sub=userId, email);
+      |Khách hàng (Client/UI)|
+      :Nhận JWT Token;
+      :Lưu Token vào LocalStorage/Cookie;
+      :Chuyển trạng thái giao diện đã đăng nhập;
+    else (Sai mật khẩu)
+      :Ném lỗi 401 Unauthorized: "Sai thông tin đăng nhập";
+      |Khách hàng (Client/UI)|
+      :Hiển thị lỗi "Sai tài khoản hoặc mật khẩu";
+      stop
+    endif
+  else (Không tìm thấy)
+    :Ném lỗi 401 Unauthorized: "Sai thông tin đăng nhập";
+    |Khách hàng (Client/UI)|
+    :Hiển thị lỗi "Sai tài khoản hoặc mật khẩu";
+    stop
+  endif
+endif
+
+|Khách hàng (Client/UI)|
+:Người dùng sẵn sàng tiến hành Đặt đơn & Thanh toán;
+stop
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+title Sequence Diagram - Quy Trình Xác Thực JWT (Task 7)
+autonumber
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam roundcorner 6
+
+actor "Khách hàng (Client)" as Client
+participant "Next.js Frontend" as FE
+participant "NestJS AuthGuard" as Guard
+participant "AuthController / Service" as Auth
+participant "PostgreSQL Database" as DB
+
+== Giai đoạn 1: Đăng nhập & Lấy Token ==
+Client -> FE: Nhập email, password & nhấn "Đăng nhập"
+FE -> Auth: POST /api/v1/auth/login (LoginDto)
+Auth -> DB: SELECT * FROM users WHERE email = ?
+DB --> Auth: Trả về bản ghi user (password_hash)
+Auth -> Auth: bcrypt.compare(password, password_hash)
+Auth -> Auth: jwtService.sign({ sub: user.id, email: user.email })
+Auth --> FE: 200 OK: { success: true, data: { accessToken: "eyJhbGci..." } }
+FE -> FE: Lưu accessToken vào localStorage
+FE --> Client: Cập nhật Header: Xin chào, Khách hàng!
+
+== Giai đoạn 2: Gọi Route Được Bảo Vệ (Ví dụ: Đặt đơn) ==
+Client -> FE: Nhấn "Thanh toán đơn hàng"
+FE -> Guard: POST /api/v1/orders (Header: Authorization: Bearer eyJhbGci...)
+Guard -> Guard: Kiểm tra Secret Key & Expiration Date
+alt Token Hợp lệ
+    Guard -> Auth: Chuyển request kèm user payload (req.user = { sub, email })
+    Auth -> DB: Tạo đơn hàng PENDING gắn với req.user.sub
+    DB --> Auth: Bản ghi Order mới (#1042)
+    Auth --> FE: 201 Created: { success: true, data: Order }
+    FE --> Client: Hiển thị màn hình Thanh toán (giữ nguyên giỏ, lưu pendingOrderId)
+else Token Không hợp lệ / Hết hạn
+    Guard --> FE: 401 Unauthorized: { success: false, message: "Token không hợp lệ" }
+    FE --> Client: Yêu cầu đăng nhập lại
+end
+
+@enduml

@@ -1,0 +1,84 @@
+@startuml
+title SƠ ĐỒ HOẠT ĐỘNG - QUY TRÌNH THANH TOÁN (D1, D2, D8, D9)
+
+skinparam backgroundColor white
+skinparam activity {
+    BackgroundColor white
+    BorderColor black
+    FontColor black
+    DiamondBackgroundColor white
+    DiamondBorderColor black
+}
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam ArrowColor black
+
+start
+
+:Khách hàng chọn đơn hàng (PENDING hoặc PAYMENT_FAILED);
+:Chọn phương thức thanh toán (ví điện tử / thẻ);
+:Tạo Idempotency-Key mới (UUID v4);
+:Gửi yêu cầu POST /api/v1/payments\n(Kèm Header X-Mock-Outcome nếu ở môi trường dev/staging);
+
+:Backend trích xuất user (req.user.sub)\nvà kiểm tra quyền sở hữu đơn hàng;
+
+if (Đơn hàng thuộc về user?) then (Không)
+    :Trả về 404 Not Found\n(không làm lộ sự tồn tại của đơn);
+    stop
+else (Có)
+endif
+
+if (Trạng thái đơn hàng là PENDING hoặc PAYMENT_FAILED?) then (Không)
+    :Trả về 409 Conflict\n(Đơn hàng không ở trạng thái cho phép thanh toán);
+    stop
+else (Có)
+endif
+
+if (Đơn hàng đang ở PAYMENT_FAILED?) then (Có)
+    :OrderService.transition(orderId, PENDING)\nChuyển đơn hàng về PENDING để thử lại (Quyết định D1);
+else (Không)
+endif
+
+:Kiểm tra Idempotency-Key trong CSDL;
+
+if (Khóa đã tồn tại trong CSDL?) then (Có)
+    if (Trùng requestHash (cùng body)?) then (Có)
+        :Trả về kết quả Payment đã lưu (HTTP 200)\n(Không tạo giao dịch mới, không trả lỗi 500);
+        stop
+    else (Không)
+        :Trả về 409 Conflict\n(Idempotency-Key đã dùng với dữ liệu khác);
+        stop
+    endif
+else (Không)
+endif
+
+:Tạo bản ghi Payment (status = PENDING);\n(Lưu requestHash và idempotencyKey);
+
+:Mô phỏng xử lý qua Payment Gateway\n(Đọc Header X-Mock-Outcome khi NODE_ENV !== 'production');
+
+if (Kết quả thanh toán gateway?) then (Thành công)
+    :Cập nhật Payment status = SUCCESS;
+    :OrderService.transition(orderId, PAID);\n(Cập nhật paidAt = now(), version + 1);
+    :Ghi OrderStatusHistory (PENDING → PAID);
+    :Cộng điểm loyalty (+1 điểm / 1.000đ finalAmount);\n(Ghi nhận LoyaltyTransaction EARNED - Quyết định D9);
+    :Frontend xóa giỏ hàng (clearCart() và xóa pendingOrderId - Quyết định D2);
+    :Hiển thị màn hình Thanh toán thành công;
+    stop
+else (Thất bại hoặc Gateway Timeout)
+    :Cập nhật Payment status = FAILED\n(failureReason = mã lỗi hoặc "Gateway timeout" - Quyết định D1);
+    :OrderService.transition(orderId, PAYMENT_FAILED);
+    :Ghi OrderStatusHistory (PENDING → PAYMENT_FAILED);
+    :Frontend giữ nguyên giỏ hàng trong LocalStorage (Quyết định D2);
+    :Hiển thị thông báo thanh toán thất bại kèm nút "Thử lại";
+
+    if (Khách hàng chọn Thử lại?) then (Có)
+        :Tạo Idempotency-Key mới;
+        :Gửi lại POST /api/v1/payments (Order PAYMENT_FAILED → PENDING);
+        stop
+    else (Hủy hoặc thoát)
+        :Đơn hàng giữ ở PAYMENT_FAILED\n(Khách có thể thử lại sau hoặc hủy đơn qua POST /orders/:id/cancel);
+        stop
+    endif
+endif
+
+@enduml

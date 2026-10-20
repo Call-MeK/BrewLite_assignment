@@ -1,0 +1,47 @@
+@startuml
+title Phân Hệ Danh Mục Sản Phẩm (Product Catalog - CAT)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam linetype ortho
+
+skinparam actor {
+    BackgroundColor #F8FAFC
+    BorderColor #1E293B
+}
+
+skinparam usecase {
+    BackgroundColor #F0FDF4
+    BorderColor #166534
+    ArrowColor #334155
+}
+
+actor "Khách hàng\n(Customer)" as Customer
+actor "Hệ thống BrewLite (System)" as System
+rectangle " «Subsystem» Phân Hệ Danh Mục Sản Phẩm (CAT)" {
+
+
+        usecase "Lấy danh sách sản phẩm\n" as UC_GetProducts
+        usecase "Hiển thị danh sách\nsản phẩm" as UC_Display
+ 
+        usecase "UC-CAT-01:\nXem menu sản phẩm" as UC_ViewMenu
+        usecase "UC-CAT-02:\nTìm kiếm sản phẩm" as UC_Search
+        usecase "UC-CAT-03:\nLọc sản phẩm theo danh mục" as UC_Filter
+    
+    UC_ViewMenu .> UC_GetProducts : <<include>>
+    UC_ViewMenu .> UC_Display : <<include>>
+
+    UC_Search .> UC_Display : <<include>>
+    UC_Filter .> UC_Display : <<include>>
+
+}
+
+Customer -- UC_ViewMenu
+Customer -- UC_Search
+Customer -- UC_Filter
+
+System -- UC_GetProducts
+
+@enduml

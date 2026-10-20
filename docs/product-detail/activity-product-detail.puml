@@ -1,0 +1,87 @@
+@startuml
+title Activity Diagram - Product Detail
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam ArrowColor #24476B
+
+skinparam activity {
+    BackgroundColor #E5F2FF
+    BorderColor #3984C6
+    FontColor #17365D
+    DiamondBackgroundColor #FFF2CC
+    DiamondBorderColor #D6A323
+    StartColor #17365D
+    EndColor #17365D
+    BarColor #3984C6
+}
+
+|Customer|
+start
+:Mở trang chi tiết sản phẩm;
+
+|Frontend|
+:Gửi request lấy thông tin
+chi tiết sản phẩm;
+
+|Backend|
+:GET /api/v1/products/:id;
+:Truy vấn thông tin sản phẩm và
+danh sách Topping (isAvailable && stock > 0 - Quyết định D3);
+:Tính cờ isAvailable = (Product.isAvailable && Product.stock > 0);
+
+if (Sản phẩm tồn tại?) then (Có)
+    :Trả về thông tin sản phẩm
+    (tên, hình ảnh, giá, isAvailable,
+    sizePrices, toppings);
+
+    |Frontend|
+    :Hiển thị trang Product Detail
+    (hình ảnh, tên, giá);
+
+    if (isAvailable == true?) then (Có)
+        |Customer|
+        :Xem thông tin sản phẩm;
+        :Chọn kích cỡ từ sizePrices và topping;
+
+        |Frontend|
+        :Cập nhật lựa chọn
+        và tính giá cuối cùng;
+        :Hiển thị giá theo
+        tùy chỉnh của khách hàng;
+
+        |Customer|
+        :Xác nhận lựa chọn;
+        :Thêm sản phẩm vào giỏ hàng;
+
+        |Frontend|
+        :Kiểm tra thông tin tùy chỉnh
+        (kích cỡ hợp lệ, quantity 1..99);
+
+        if (Thông tin hợp lệ?) then (Có)
+            :Thêm sản phẩm vào giỏ hàng;
+            :Hiển thị thông báo
+            thêm vào giỏ hàng thành công;
+        else (Không)
+            :Hiển thị thông báo lỗi;
+            |Customer|
+            :Điều chỉnh lại lựa chọn;
+        endif
+
+    else (Không)
+        |Frontend|
+        :Hiển thị thông báo
+        sản phẩm hết hàng / không khả dụng
+        (khóa thao tác thêm vào giỏ);
+    endif
+
+else (Không)
+    |Frontend|
+    :Hiển thị thông báo
+    không tìm thấy sản phẩm (404);
+endif
+
+stop
+@enduml

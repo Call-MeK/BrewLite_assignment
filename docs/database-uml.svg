@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 780" width="100%" height="100%" style="background-color: #ffffff; font-family: 'Segoe UI', Arial, sans-serif;">
+  <defs>
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.08"/>
+    </filter>
+    <marker id="diamond" viewBox="0 0 16 16" refX="0" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <polygon points="8,0 16,8 8,16 0,8" fill="#0A0E1A" stroke="#0A0E1A" stroke-width="1"/>
+    </marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#2D6BE4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title { font-size: 22px; font-weight: bold; fill: #0A0E1A; text-anchor: middle; }
+    .subtitle { font-size: 13px; fill: #6B7280; text-anchor: middle; }
+    .class-header { fill: #0A0E1A; rx: 8; ry: 8; }
+    .class-header-text { font-size: 14px; font-weight: bold; fill: #FFFFFF; }
+    .class-subtext { font-size: 11px; fill: #94A3B8; }
+    .class-body { fill: #FFFFFF; stroke: #E5E7EB; stroke-width: 1.5; rx: 8; ry: 8; filter: url(#card-shadow); }
+    .field-pk { font-size: 12px; font-weight: bold; fill: #2D6BE4; }
+    .field-fk { font-size: 12px; font-weight: bold; fill: #9333EA; }
+    .field-normal { font-size: 12px; fill: #111827; }
+    .field-type { font-size: 11.5px; fill: #6B7280; }
+    .field-tag { font-size: 10px; font-weight: 600; fill: #10D98A; }
+    .rel-line { stroke: #0A0E1A; stroke-width: 1.8; }
+    .rel-text { font-size: 11px; font-weight: bold; fill: #4B5563; }
+    .enum-box { fill: #F5F7FA; stroke: #CBD5E1; stroke-width: 1.2; rx: 6; }
+    .enum-title { font-size: 12px; font-weight: bold; fill: #334155; }
+    .enum-item { font-size: 11px; fill: #64748B; }
+  </style>
+
+  <!-- Title -->
+  <text x="575" y="40" class="title">SƠ ĐỒ UML DATABASE / CLASS DIAGRAM – HỆ THỐNG BREWLITE</text>
+  <text x="575" y="62" class="subtitle">Đặc tả thực thể PostgreSQL qua Prisma ORM (Hỗ trợ Concurrency &amp; Idempotency)</text>
+
+  <!-- ==================== CLASS: USERS ==================== -->
+  <g transform="translate(60, 100)">
+    <rect width="250" height="210" class="class-body"/>
+    <path d="M 0 8 Q 0 0 8 0 L 242 0 Q 250 0 250 8 L 250 42 L 0 42 Z" fill="#0A0E1A"/>
+    <text x="16" y="24" class="class-header-text">User</text>
+    <text x="16" y="37" class="class-subtext">&lt;&lt;table: users&gt;&gt;</text>
+    
+    <text x="16" y="65" class="field-pk">PK id</text><text x="95" y="65" class="field-type">: String (CUID)</text>
+    <text x="16" y="88" class="field-normal">UK email</text><text x="95" y="88" class="field-type">: String</text>
+    <text x="16" y="111" class="field-normal">password_hash</text><text x="110" y="111" class="field-type">: String</text>
+    <text x="16" y="134" class="field-normal">full_name</text><text x="95" y="134" class="field-type">: String?</text>
+    <text x="16" y="157" class="field-normal">loyalty_points</text><text x="105" y="157" class="field-type">: Int = 0</text>
+    <text x="16" y="180" class="field-normal">created_at</text><text x="95" y="180" class="field-type">: DateTime</text>
+    <text x="16" y="200" class="field-normal">updated_at</text><text x="95" y="200" class="field-type">: DateTime</text>
+  </g>
+
+  <!-- ==================== CLASS: PRODUCTS ==================== -->
+  <g transform="translate(840, 100)">
+    <rect width="250" height="225" class="class-body"/>
+    <path d="M 0 8 Q 0 0 8 0 L 242 0 Q 250 0 250 8 L 250 42 L 0 42 Z" fill="#0A0E1A"/>
+    <text x="16" y="24" class="class-header-text">Product</text>
+    <text x="16" y="37" class="class-subtext">&lt;&lt;table: products&gt;&gt;</text>
+    
+    <text x="16" y="65" class="field-pk">PK id</text><text x="85" y="65" class="field-type">: String (CUID)</text>
+    <text x="16" y="88" class="field-normal">name</text><text x="85" y="88" class="field-type">: String</text>
+    <text x="16" y="111" class="field-normal">base_price</text><text x="95" y="111" class="field-type">: Decimal(10,2)</text>
+    <text x="16" y="134" class="field-normal">image_url</text><text x="95" y="134" class="field-type">: String?</text>
+    <text x="16" y="157" class="field-normal">stock</text><text x="85" y="157" class="field-type">: Int = 0</text>
+    <text x="16" y="180" class="field-normal">version</text><text x="85" y="180" class="field-type">: Int = 0</text><text x="145" y="180" class="field-tag">[OptimisticLock]</text>
+    <text x="16" y="202" class="field-normal">is_available</text><text x="95" y="202" class="field-type">: Boolean = true</text>
+  </g>
+
+  <!-- ==================== CLASS: ORDERS ==================== -->
+  <g transform="translate(420, 100)">
+    <rect width="270" height="240" class="class-body"/>
+    <path d="M 0 8 Q 0 0 8 0 L 262 0 Q 270 0 270 8 L 270 42 L 0 42 Z" fill="#2D6BE4"/>
+    <text x="16" y="24" class="class-header-text">Order</text>
+    <text x="16" y="37" class="class-subtext">&lt;&lt;table: orders&gt;&gt;</text>
+    
+    <text x="16" y="65" class="field-pk">PK id</text><text x="110" y="65" class="field-type">: String (CUID)</text>
+    <text x="16" y="88" class="field-normal">UK order_code</text><text x="110" y="88" class="field-type">: String (#1042)</text>
+    <text x="16" y="111" class="field-fk">FK user_id</text><text x="110" y="111" class="field-type">: String</text>
+    <text x="16" y="134" class="field-normal">status</text><text x="110" y="134" class="field-type">: OrderStatus</text>
+    <text x="16" y="157" class="field-normal">total_amount</text><text x="110" y="157" class="field-type">: Decimal(10,2)</text>
+    <text x="16" y="180" class="field-normal">discount_amount</text><text x="120" y="180" class="field-type">: Decimal(10,2) = 0</text>
+    <text x="16" y="203" class="field-normal">final_amount</text><text x="110" y="203" class="field-type">: Decimal(10,2)</text>
+    <text x="16" y="225" class="field-normal">created_at</text><text x="110" y="225" class="field-type">: DateTime</text>
+  </g>
+
+  <!-- ==================== CLASS: ORDER_ITEMS ==================== -->
+  <g transform="translate(420, 430)">
+    <rect width="270" height="225" class="class-body"/>
+    <path d="M 0 8 Q 0 0 8 0 L 262 0 Q 270 0 270 8 L 270 42 L 0 42 Z" fill="#0A0E1A"/>
+    <text x="16" y="24" class="class-header-text">OrderItem</text>
+    <text x="16" y="37" class="class-subtext">&lt;&lt;table: order_items&gt;&gt;</text>
+    
+    <text x="16" y="65" class="field-pk">PK id</text><text x="100" y="65" class="field-type">: String (CUID)</text>
+    <text x="16" y="88" class="field-fk">FK order_id</text><text x="100" y="88" class="field-type">: String</text>
+    <text x="16" y="111" class="field-fk">FK product_id</text><text x="100" y="111" class="field-type">: String</text>
+    <text x="16" y="134" class="field-normal">size</text><text x="100" y="134" class="field-type">: ProductSize (S/M/L)</text>
+    <text x="16" y="157" class="field-normal">toppings</text><text x="100" y="157" class="field-type">: Json? (mảng topping)</text>
+    <text x="16" y="180" class="field-normal">quantity</text><text x="100" y="180" class="field-type">: Int = 1</text>
+    <text x="16" y="203" class="field-normal">unit_price</text><text x="100" y="203" class="field-type">: Decimal(10,2)</text>
+    <text x="16" y="223" class="field-normal">line_total</text><text x="100" y="223" class="field-type">: Decimal(10,2)</text>
+  </g>
+
+  <!-- ==================== CLASS: PAYMENTS ==================== -->
+  <g transform="translate(60, 430)">
+    <rect width="260" height="205" class="class-body"/>
+    <path d="M 0 8 Q 0 0 8 0 L 252 0 Q 260 0 260 8 L 260 42 L 0 42 Z" fill="#0A0E1A"/>
+    <text x="16" y="24" class="class-header-text">Payment</text>
+    <text x="16" y="37" class="class-subtext">&lt;&lt;table: payments&gt;&gt;</text>
+    
+    <text x="16" y="65" class="field-pk">PK id</text><text x="110" y="65" class="field-type">: String (CUID)</text>
+    <text x="16" y="88" class="field-fk">FK,UK order_id</text><text x="120" y="88" class="field-type">: String</text>
+    <text x="16" y="111" class="field-normal">UK idempotency_key</text><text x="140" y="111" class="field-type">: String</text>
+    <text x="16" y="134" class="field-normal">amount</text><text x="110" y="134" class="field-type">: Decimal(10,2)</text>
+    <text x="16" y="157" class="field-normal">method</text><text x="110" y="157" class="field-type">: PaymentMethod</text>
+    <text x="16" y="180" class="field-normal">status</text><text x="110" y="180" class="field-type">: PaymentStatus</text>
+    <text x="16" y="200" class="field-normal">transaction_ref</text><text x="115" y="200" class="field-type">: String?</text>
+  </g>
+
+  <!-- ==================== ENUMS BOX ==================== -->
+  <g transform="translate(840, 430)">
+    <rect width="250" height="225" class="enum-box"/>
+    <text x="16" y="25" class="enum-title">&lt;&lt;Enums System&gt;&gt;</text>
+    <line x1="10" y1="35" x2="240" y2="35" stroke="#CBD5E1"/>
+    
+    <text x="16" y="55" class="enum-title">OrderStatus:</text>
+    <text x="16" y="73" class="enum-item">PENDING, PAID, PREPARING,</text>
+    <text x="16" y="90" class="enum-item">READY, COMPLETED,</text>
+    <text x="16" y="107" class="enum-item">PAYMENT_FAILED, CANCELLED</text>
+    
+    <text x="16" y="132" class="enum-title">PaymentMethod:</text>
+    <text x="16" y="150" class="enum-item">E_WALLET, BANK_CARD</text>
+    
+    <text x="16" y="175" class="enum-title">ProductSize:</text>
+    <text x="16" y="193" class="enum-item">S, M, L</text>
+  </g>
+
+  <!-- ==================== RELATIONSHIPS & CONNECTORS ==================== -->
+  <!-- User to Order (1 to 0..*) -->
+  <line x1="310" y1="210" x2="420" y2="210" class="rel-line"/>
+  <text x="320" y="200" class="rel-text">1</text>
+  <text x="390" y="200" class="rel-text">0..*</text>
+  <text x="345" y="228" class="rel-text">places</text>
+
+  <!-- Order to OrderItem (1 to 1..*) (Composition: Diamond on Order) -->
+  <line x1="555" y1="340" x2="555" y2="430" class="rel-line" marker-start="url(#diamond)"/>
+  <text x="565" y="365" class="rel-text">1</text>
+  <text x="565" y="420" class="rel-text">1..*</text>
+  <text x="505" y="390" class="rel-text">contains</text>
+
+  <!-- OrderItem to Product (references) -->
+  <line x1="690" y1="520" x2="840" y2="280" class="rel-line" stroke-dasharray="5 3"/>
+  <text x="700" y="505" class="rel-text">0..*</text>
+  <text x="825" y="295" class="rel-text">1</text>
+  <text x="765" y="415" class="rel-text">references</text>
+
+  <!-- Order to Payment (1 to 0..1) -->
+  <path d="M 420 280 L 190 280 L 190 430" fill="none" class="rel-line"/>
+  <text x="395" y="270" class="rel-text">1</text>
+  <text x="200" y="420" class="rel-text">0..1</text>
+  <text x="250" y="295" class="rel-text">has payment</text>
+
+</svg>

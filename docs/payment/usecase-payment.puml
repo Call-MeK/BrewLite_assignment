@@ -1,0 +1,38 @@
+@startuml
+title USE CASE DIAGRAM - BREWLITE PAYMENT
+
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+
+actor "Khách hàng" as Customer
+actor "Cổng thanh toán\ngiả lập" as Gateway
+
+rectangle "BrewLite - Payment System" {
+    usecase "Chọn phương thức\nthanh toán" as UC1
+    usecase "Thực hiện\nthanh toán" as UC2
+    usecase "Thanh toán bằng\nví điện tử" as UC3
+    usecase "Thanh toán bằng\nthẻ ngân hàng" as UC4
+    usecase "Xem trạng thái\nthanh toán" as UC5
+    usecase "Xem lịch sử\ngiao dịch" as UC6
+    usecase "Kiểm tra\nIdempotency-Key" as UC7
+    usecase "Xử lý kết quả\ngiao dịch" as UC8
+}
+
+Customer -- UC1
+Customer -- UC2
+Customer -- UC5
+Customer -- UC6
+
+UC2 ..> UC1 : <<include>>
+UC2 ..> UC7 : <<include>>
+UC2 ..> UC8 : <<include>>
+
+UC3 -|> UC2
+UC4 -|> UC2
+
+Gateway -- UC3
+Gateway -- UC4
+Gateway -- UC8
+@enduml

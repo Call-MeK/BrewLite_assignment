@@ -1,0 +1,27 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Khách hàng\n(Customer)" as Customer
+actor "Hệ thống Backend\n(BrewLite API)" as Backend
+
+rectangle "Phân hệ Đặt hàng (Order Management)" {
+  usecase "Tạo đơn hàng\n(UC-ORDER-CREATE)" as UC_CreateOrder
+  usecase "Xác thực phiên đăng nhập\n(JWT)" as UC_Auth
+  usecase "Kiểm tra giỏ hàng & tính giá\n(Pricing Validation)" as UC_ValidatePricing
+  usecase "Kiểm tra & giữ tồn kho\n(Stock Check & Decrement)" as UC_Stock
+  usecase "Chuyển trạng thái đơn\n(Order State Machine)" as UC_StateMachine
+}
+
+Customer --> UC_CreateOrder
+
+UC_CreateOrder ..> UC_Auth            : <<include>>
+UC_CreateOrder ..> UC_ValidatePricing : <<include>>
+UC_CreateOrder ..> UC_Stock           : <<include>>
+UC_CreateOrder ..> UC_StateMachine   : <<include>>
+
+Backend --> UC_ValidatePricing
+Backend --> UC_Stock
+Backend --> UC_StateMachine
+@enduml
