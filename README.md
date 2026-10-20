@@ -14,7 +14,7 @@ Dành cho tất cả các thành viên trong nhóm clone về chạy lần đầ
 ```bash
 docker compose up -d
 ```
-> Lệnh này sẽ tự động tải image PostgreSQL 16 và khởi chạy database `brewlite_db` tại cổng `5433`.
+> Lệnh này sẽ tự động tải image PostgreSQL 16 và khởi chạy database `brewlite_db` tại cổng `5432`.
 
 ### Bước 2: Khởi động Backend (NestJS)
 Mở một cửa sổ Terminal mới:
@@ -70,3 +70,15 @@ Trước khi bắt tay vào code các tính năng tiếp theo, tất cả thành
 1. [Quy chuẩn Git & Commit](docs/git-convention.md)
 2. [Quy chuẩn đặt tên API & Database](docs/naming-convention.md)
 3. [Checklist review code trước khi merge](docs/checklist-review.md)
+
+## Chạy trên Windows với môi trường cục bộ trong thư mục này
+
+Môi trường cục bộ dùng Node.js 22 và PostgreSQL 16 trong `.tools/`. Chạy lần lượt từ thư mục gốc, mỗi lệnh trong một terminal riêng:
+
+```powershell
+.\dev-db.cmd
+.\dev-backend.cmd
+.\dev-frontend.cmd
+```
+
+Mở `http://localhost:3000` cho giao diện hoặc `http://localhost:4000/api/v1/products` cho API. Dùng `.\stop-db.cmd` để tắt PostgreSQL. Các tệp `.env`, `backend/.env` và `frontend/.env.local` chứa cấu hình cục bộ và không được commit.
