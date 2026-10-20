@@ -1,5 +1,9 @@
 # Test Cases – Payment
 
+> Triển khai ZaloPay thay Mock từ 20/10/2026. Test tự động tại `backend/test/zalopay.test.cjs`, `payments.test.cjs`, `payment-client.test.cjs`; chạy `node --require ts-node/register --test test/*.test.cjs` từ backend. TC-PAY-14/15 theo Mock được thay bằng giữ PENDING khi timeout và query đối soát. TC-PAY-16/19 và công tắc Mock không áp dụng. Chưa nghiệm thu giao dịch người dùng thanh toán qua app/thẻ sandbox; xem [cách kiểm thử](zalopay-setup.md).
+
+Kết quả xác minh 20/10/2026: 31/31 test toàn bộ backend (bao gồm 3 test Product có sẵn) PASS; build backend/frontend PASS; Prisma validate và migration PASS. Gọi thực tế ZaloPay sandbox bằng cấu hình local: tạo link PASS, truy vấn trạng thái PENDING PASS; chưa thực hiện trả tiền/callback HTTPS thật.
+
 ## 1. Phạm vi
 
 Kiểm thử API `POST /api/v1/payments`, hai phương thức `E_WALLET`, `BANK_CARD`, xử lý kết quả từ Mock Payment Gateway và quy tắc Idempotency-Key.

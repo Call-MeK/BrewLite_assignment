@@ -1,5 +1,7 @@
 # API Contract – Payment
 
+> Cập nhật triển khai 20/10/2026: theo yêu cầu dùng ZaloPay sandbox, contract hiện hành là [ZaloPay setup, API và lỗi](zalopay-setup.md) và [thiết kế](zalopay-design.md). Phần Mock bên dưới lưu lại đặc tả MVP ban đầu; `X-Mock-Outcome`, mặc định SUCCESS và “timeout là FAILED” không áp dụng cho code ZaloPay. POST hiện trả PENDING cùng paymentUrl, chỉ xác nhận SUCCESS sau callback/query hợp lệ.
+
 ## 1. Endpoint
 
 - **Method:** `POST`

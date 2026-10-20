@@ -17,6 +17,8 @@ Mô tả mapping giữa Prisma model `Payment`, model `Order` và các cột tư
 | `status` | `status` | Enum `PENDING`, `SUCCESS`, `FAILED` |
 | `failureReason` | `failure_reason` | String tùy chọn |
 | `transactionRef` | `transaction_ref` | String tùy chọn, mã giao dịch |
+| `gatewayOrderId` | `gateway_order_id` | String tùy chọn, unique; app_trans_id ZaloPay cho từng lần thanh toán |
+| `paymentUrl` | `payment_url` | String tùy chọn; link thanh toán ZaloPay để tiếp tục giao dịch đang chờ |
 | `createdAt` | `created_at` | DateTime, thời điểm tạo |
 
 Tên bảng trong database: `payments`.
