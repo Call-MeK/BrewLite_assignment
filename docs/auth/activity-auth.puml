@@ -1,70 +1,67 @@
 @startuml
-title Activity Diagram - Luồng Đăng Ký & Đăng Nhập (Auth Flow)
+title BrewLite - Activity đăng ký / đăng nhập (thiết kế)
 skinparam defaultFontName Arial
 skinparam shadowing false
-skinparam roundcorner 8
 
-|Khách hàng (Client/UI)|
+|Khách hàng / Frontend|
 start
-:Mở Modal/Trang Đăng ký hoặc Đăng nhập;
-
-if (Chọn hành động?) then (Đăng ký mới)
-  :Nhập Email, Password (>= 6 ký tự), Full Name;
-  :Nhấn nút "Tạo tài khoản";
-  |Hệ thống Backend (NestJS)|
-  :ValidationPipe kiểm tra DTO đầu vào;
-  if (Email hợp lệ & Password >= 6 ký tự?) then (Hợp lệ)
-    :Truy vấn kiểm tra Email trong Database;
-    if (Email đã tồn tại?) then (Đã tồn tại)
-      :Ném lỗi 409 Conflict: "Email đã được đăng ký";
-      |Khách hàng (Client/UI)|
-      :Hiển thị thông báo lỗi trên UI;
-      stop
-    else (Email chưa có)
-      :Băm mật khẩu an toàn bằng bcrypt (Salt = 10);
-      :Tạo bản ghi mới trong bảng 'users';
-      :Ký và phát hành mã JWT Token (hạn 7 ngày);
-      |Khách hàng (Client/UI)|
-      :Nhận JWT Token;
-      :Lưu Token vào LocalStorage/Cookie;
-      :Cập nhật Header: Hiển thị tên người dùng;
-    endif
-  else (Lỗi cú pháp DTO)
-    :Ném lỗi 400 Bad Request;
-    |Khách hàng (Client/UI)|
-    :Hiển thị thông báo lỗi kiểm tra dữ liệu;
+:Chọn đăng ký hoặc đăng nhập;
+if (Đăng ký?) then (Có)
+  :Nhập email, mật khẩu, họ tên;
+  :Gửi POST /api/v1/auth/register;
+  |Auth API|
+  :Kiểm tra DTO\n(email hợp lệ, mật khẩu >= 6 ký tự);
+  if (Dữ liệu hợp lệ?) then (Không)
+    :Trả HTTP 400;
+    |Khách hàng / Frontend|
+    :Hiển thị lỗi nhập liệu;
     stop
+  else (Có)
+    |Database|
+    :Tìm user theo email;
+    if (Email đã tồn tại?) then (Có)
+      |Auth API|
+      :Trả HTTP 409;
+      |Khách hàng / Frontend|
+      :Báo email đã được dùng;
+      stop
+    else (Không)
+      |Auth API|
+      :Băm mật khẩu bằng bcrypt;
+      |Database|
+      :Tạo user\n(loyaltyPoints = 0);
+      |Auth API|
+      :Ký JWT\n(sub = user.id, email, hạn 7 ngày);
+      :Trả HTTP 201\n(accessToken, user);
+    endif
   endif
 else (Đăng nhập)
-  :Nhập Email và Password;
-  :Nhấn nút "Đăng nhập";
-  |Hệ thống Backend (NestJS)|
-  :ValidationPipe kiểm tra định dạng;
-  :Tìm kiếm người dùng theo Email;
-  if (Tìm thấy người dùng?) then (Có)
-    :So sánh Password với password_hash qua bcrypt.compare();
-    if (Khớp mật khẩu?) then (Đúng)
-      :Ký và tạo mã JWT Token (payload: sub=userId, email);
-      |Khách hàng (Client/UI)|
-      :Nhận JWT Token;
-      :Lưu Token vào LocalStorage/Cookie;
-      :Chuyển trạng thái giao diện đã đăng nhập;
-    else (Sai mật khẩu)
-      :Ném lỗi 401 Unauthorized: "Sai thông tin đăng nhập";
-      |Khách hàng (Client/UI)|
-      :Hiển thị lỗi "Sai tài khoản hoặc mật khẩu";
-      stop
-    endif
-  else (Không tìm thấy)
-    :Ném lỗi 401 Unauthorized: "Sai thông tin đăng nhập";
-    |Khách hàng (Client/UI)|
-    :Hiển thị lỗi "Sai tài khoản hoặc mật khẩu";
+  :Nhập email, mật khẩu;
+  :Gửi POST /api/v1/auth/login;
+  |Auth API|
+  :Kiểm tra DTO;
+  if (Dữ liệu hợp lệ?) then (Không)
+    :Trả HTTP 400;
+    |Khách hàng / Frontend|
+    :Hiển thị lỗi nhập liệu;
     stop
+  else (Có)
+    |Database|
+    :Tìm user theo email;
+    |Auth API|
+    :So khớp mật khẩu bằng bcrypt;
+    if (User tồn tại và mật khẩu đúng?) then (Không)
+      :Trả HTTP 401\n(thông báo chung);
+      |Khách hàng / Frontend|
+      :Báo sai email hoặc mật khẩu;
+      stop
+    else (Có)
+      :Ký JWT\n(sub = user.id, email, hạn 7 ngày);
+      :Trả HTTP 200\n(accessToken, user);
+    endif
   endif
 endif
-
-|Khách hàng (Client/UI)|
-:Người dùng sẵn sàng tiến hành Đặt đơn & Thanh toán;
+|Khách hàng / Frontend|
+:Lưu token và cập nhật trạng thái đăng nhập;
 stop
-
 @enduml

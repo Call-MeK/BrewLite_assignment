@@ -4,6 +4,8 @@
 **Môn học:** Công nghệ Phần mềm | **Học kỳ:** I – 2026–2027  
 **Phạm vi:** Đáp ứng Task 7 (Đăng ký / Đăng nhập JWT) và thiết lập tài liệu mẫu (Template) cho 6 thành viên còn lại.
 
+> **Trạng thái:** Đăng ký, đăng nhập, đổi mật khẩu, JWT Guard và `GET /api/v1/auth/me` đã được triển khai. Ví dụ bảo vệ API tạo đơn trong sequence diagram là thiết kế cho Orders; module Orders hiện mới có endpoint health.
+
 ---
 
 ## 1. TỔNG QUAN PHÂN HỆ (MODULE OVERVIEW)
@@ -12,7 +14,8 @@ Phân hệ Xác thực (Authentication) chịu trách nhiệm nhận diện khá
 * **Các ca sử dụng cốt lõi:**
   1. **`UC-AUTH-01`**: Đăng ký tài khoản khách hàng mới (Register)
   2. **`UC-AUTH-02`**: Đăng nhập hệ thống & Nhận JWT Access Token (Login)
-  3. **`UC-AUTH-03`**: Xác thực Token qua AuthGuard & Bảo vệ Endpoint (Guard)
+  3. **`UC-AUTH-03`**: Khách hàng truy cập API được bảo vệ; hệ thống xác thực JWT qua Guard
+  4. **`UC-AUTH-04`**: Đổi mật khẩu và vô hiệu hóa token cũ
 
 ---
 
@@ -89,21 +92,39 @@ Phân hệ Xác thực (Authentication) chịu trách nhiệm nhận diện khá
 | :--- | :--- |
 | **Mã Use Case** | `UC-AUTH-03` |
 | **Tên Use Case** | Xác thực JWT và bảo vệ tuyến API |
-| **Actor** | Hệ thống BrewLite (System / AuthGuard) |
+| **Actor chính** | Khách hàng (Customer); AuthGuard là thành phần nội bộ của hệ thống. |
 | **Mục đích** | Kiểm soát quyền truy cập các endpoint nhạy cảm (Đặt hàng, Xem đơn cá nhân). |
 
 #### Luồng xử lý kỹ thuật:
 1. Client gửi request kèm Header: `Authorization: Bearer <accessToken>`.
 2. NestJS `JwtAuthGuard` chặn request trước khi vào Controller.
 3. Guard giải mã Token, kiểm tra chữ ký HMAC-SHA256 và kiểm tra ngày hết hạn (`exp`).
-4. Nếu hợp lệ, Guard gắn thông tin user vào request object: `req.user = { sub, email }` (theo Quyết định D4, trích xuất từ payload của Token).
+4. Guard so sánh `ver` trong JWT với `users.token_version`. Nếu hợp lệ, Guard gắn `req.user = { sub, email, ver }` vào request.
 5. Nếu Token không tồn tại, hết hạn hoặc sai chữ ký $\rightarrow$ Trả về `401 Unauthorized: "Vui lòng đăng nhập để tiếp tục"`.
+
+---
+
+### 📄 UC-AUTH-04: ĐỔI MẬT KHẨU VÀ THU HỒI TOKEN CŨ
+
+| Thuộc tính | Chi tiết đặc tả |
+| :--- | :--- |
+| **Actor chính** | Khách hàng đã đăng nhập |
+| **Điều kiện trước** | JWT còn hiệu lực; biết mật khẩu hiện tại |
+| **Kết quả** | Mật khẩu được băm lại, `token_version` tăng 1; cấp JWT mới cho phiên hiện tại |
+
+1. Khách hàng nhập mật khẩu hiện tại, mật khẩu mới và xác nhận mật khẩu mới trên trang `/account/security`.
+2. Frontend gửi `POST /api/v1/auth/change-password` kèm JWT.
+3. Backend xác thực JWT, đối chiếu mật khẩu hiện tại với `password_hash` bằng bcrypt.
+4. Backend băm mật khẩu mới; cập nhật `password_hash` và tăng `token_version` trong cùng một thao tác DB có điều kiện.
+5. Backend cấp JWT mới mang `ver` mới. Mọi JWT cũ bị Guard từ chối với HTTP 401.
+
+**Ngoại lệ:** Thiếu hoặc sai token, sai mật khẩu hiện tại → 401; dữ liệu không hợp lệ hoặc mật khẩu mới trùng mật khẩu cũ → 400.
 
 ---
 
 ## 3. QUY TẮC NGHIỆP VỤ & BẢO MẬT (BUSINESS RULES)
 
-1. **BR-AUTH-01 (Mật khẩu an toàn):** Mật khẩu phải có độ dài từ 6 ký tự trở lên. Không bao giờ lưu trữ mật khẩu dạng văn bản thô (plain text). Bắt buộc băm qua thuật toán `bcrypt` với muối (Salt Round) là 10.
+1. **BR-AUTH-01 (Mật khẩu an toàn):** Mật khẩu phải có độ dài từ 6 ký tự trở lên và không quá 72 byte UTF-8 (giới hạn đầu vào của bcrypt). Không bao giờ lưu trữ mật khẩu dạng văn bản thô (plain text). Bắt buộc băm qua thuật toán `bcrypt` với muối (Salt Round) là 10.
 2. **BR-AUTH-02 (Chu kỳ sống của JWT):** Thời gian hết hạn của JWT Access Token được cấu hình là `7d` (7 ngày) qua biến môi trường `JWT_EXPIRATION`.
 3. **BR-AUTH-03 (Tích lũy Loyalty ban đầu):** Người dùng đăng ký mới có điểm tích lũy khởi điểm là 0 (`loyalty_points = 0`).
 4. **BR-AUTH-04 (Bảo vệ Route):** Các API bắt buộc phải có `JwtAuthGuard`:
@@ -111,6 +132,7 @@ Phân hệ Xác thực (Authentication) chịu trách nhiệm nhận diện khá
    - `POST /api/v1/orders/:id/cancel` (Hủy đơn hàng - Quyết định D6)
    - `GET /api/v1/orders/me` (Lịch sử đơn cá nhân)
    - `POST /api/v1/payments` (Thanh toán đơn hàng)
+5. **BR-AUTH-05 (Thu hồi token):** JWT chứa `ver` bằng `users.token_version`. Đổi mật khẩu làm tăng phiên bản; Guard kiểm tra phiên bản với DB trên mỗi request được bảo vệ. Các JWT cũ không còn hợp lệ.
 
 ---
 
@@ -168,6 +190,17 @@ Phân hệ Xác thực (Authentication) chịu trách nhiệm nhận diện khá
     "timestamp": "2026-10-06T16:00:00.000Z"
   }
   ```
+
+### 4.3. Xem tài khoản hiện tại: `GET /api/v1/auth/me`
+* **Header:** `Authorization: Bearer <accessToken>`.
+* **Thành công:** `200 OK`, trả về `{ id, email, fullName, loyaltyPoints }` trong `data`.
+* **Lỗi:** `401 Unauthorized` nếu thiếu token, token sai/hết hạn hoặc tài khoản đã bị xóa.
+
+### 4.4. Đổi mật khẩu: `POST /api/v1/auth/change-password`
+* **Header:** `Authorization: Bearer <accessToken>`.
+* **Request Body:** `{ "currentPassword": "MậtKhẩuCũ", "newPassword": "MậtKhẩuMới" }`.
+* **Thành công:** `200 OK`, trả về `{ accessToken, user }`; frontend thay token cũ bằng token mới.
+* **Lỗi:** `400` nếu dữ liệu/mật khẩu mới không hợp lệ; `401` nếu token hoặc mật khẩu hiện tại sai.
 
 ---
 > *Tài liệu cập nhật v1.1 – áp dụng quyết định D4, D6 (ngày 2026-10-16).*
