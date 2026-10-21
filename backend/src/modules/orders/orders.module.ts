@@ -1,4 +1,5 @@
 import { Module, Controller, Get } from '@nestjs/common';
+import { OrdersService } from './orders.service';
 
 @Controller('orders')
 export class OrdersController {
@@ -10,5 +11,7 @@ export class OrdersController {
 
 @Module({
   controllers: [OrdersController],
+  providers: [OrdersService],
+  exports: [OrdersService],
 })
 export class OrdersModule {}
