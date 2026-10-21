@@ -64,8 +64,11 @@ export class ProductsController {
       currency: 'VND',
       isAvailable: product.isAvailable && product.stock > 0,
       sizePrices: product.sizePrices
-        .sort((a, b) => a.size.localeCompare(b.size))
-        .map((item) => ({
+        .sort(
+  (a, b) =>
+    ['S', 'M', 'L'].indexOf(a.size) -
+    ['S', 'M', 'L'].indexOf(b.size),
+)        .map((item) => ({
           size: item.size,
           priceAdjustment: Number(item.priceAdjustment),
         })),
