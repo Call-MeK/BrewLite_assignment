@@ -115,7 +115,7 @@ Khi xảy ra lỗi (Status code 400, 401, 403, 404, 409, 500), response được
 - **Cùng key, khác nội dung (`requestHash`):** Backend ném `409 Conflict` từ chối yêu cầu.
 - **Xử lý đồng thời (Concurrency):** Ràng buộc `unique` trên `idempotency_key` đảm bảo không bao giờ phát sinh 2 bản ghi thanh toán trùng nhau. Với các request đồng thời dùng cùng key, request thua cuộc (bị lỗi unique constraint) phải truy vấn và trả về kết quả đã lưu (HTTP 200), **tuyệt đối không được trả lỗi 500**.
 - **Retry sau thất bại:** Khi giao dịch thất bại (`FAILED`), khách hàng bấm "Thử lại":
-  1. Frontend chuyển đơn hàng `PAYMENT_FAILED → PENDING` qua `OrderService.transition`.
+  1. Backend tự chuyển đơn hàng `PAYMENT_FAILED → PENDING` qua `OrdersService.transition()` trong transaction thanh toán; Frontend không gọi API reset riêng.
   2. Frontend **bắt buộc phải sinh một `Idempotency-Key` mới**.
   3. Hệ thống cho phép thử lại không giới hạn số lần (đã gỡ bỏ giới hạn 3 lần và thời hạn 15 phút).
 - **Giỏ hàng:** Frontend KHÔNG xóa giỏ hàng khi tạo đơn hoặc khi thanh toán lỗi. Chỉ xóa giỏ hàng (`clearCart()` và xóa `pendingOrderId`) khi thanh toán `SUCCESS` (đơn hàng đạt trạng thái `PAID`).
@@ -150,13 +150,13 @@ export interface MockPaymentResult {
   X-Mock-Outcome: SUCCESS | FAILED
   ```
 - **Mặc định:** Nếu không truyền header `X-Mock-Outcome`, Mock Gateway mặc định xử lý thành công (`SUCCESS`).
-- **Bảo mật môi trường:** Backend chỉ đọc header `X-Mock-Outcome` khi biến môi trường `NODE_ENV !== 'production'`. Trong môi trường `production`, header này luôn bị bỏ qua và giao dịch được coi là thành công.
+- **Bảo mật môi trường v1.2:** Chỉ cho phép mock khi `NODE_ENV=development` hoặc `test` và `PAYMENT_DEMO_MODE=true`. Ngoài cấu hình này, endpoint trả `503`, không tạo Payment và không cập nhật Order. Production tuyệt đối không tự thanh toán thành công. Header không hợp lệ trả `400`.
 
 | Header `X-Mock-Outcome` | Môi trường | Kết quả trả về | Hành vi hệ thống |
 |---|---|---|---|
 | `SUCCESS` (hoặc không truyền) | `development` / `test` | `status: SUCCESS`, `transactionRef: "MOCK_TXN_..."` | Payment $\rightarrow$ `SUCCESS`, Order $\rightarrow$ `PAID` |
 | `FAILED` | `development` / `test` | `status: FAILED`, `failureReason: "Giao dịch bị từ chối bởi cổng thanh toán mô phỏng"` | Payment $\rightarrow$ `FAILED`, Order $\rightarrow$ `PAYMENT_FAILED` |
-| Bất kỳ giá trị nào | `production` | Luôn bỏ qua header, xử lý thành công | Payment $\rightarrow$ `SUCCESS`, Order $\rightarrow$ `PAID` |
+| Bất kỳ giá trị nào | `production`, môi trường khác hoặc demo chưa bật | `503 Service Unavailable` | Không tạo Payment, không cập nhật Order |
 
 ## 7. Lưu ý tích hợp Frontend & Backend
 

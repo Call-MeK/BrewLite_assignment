@@ -1,5 +1,5 @@
 @startuml
-title SƠ ĐỒ HOẠT ĐỘNG - QUY TRÌNH THANH TOÁN (D1, D2, D8, D9)
+title SƠ ĐỒ HOẠT ĐỘNG - QUY TRÌNH THANH TOÁN v1.2 (D1, D2, D8, D9)
 
 skinparam backgroundColor white
 skinparam activity {
@@ -18,31 +18,30 @@ start
 :Khách hàng chọn đơn hàng (PENDING hoặc PAYMENT_FAILED);
 :Chọn phương thức thanh toán (ví điện tử / thẻ);
 :Tạo Idempotency-Key mới (UUID v4);
-:Gửi yêu cầu POST /api/v1/payments\n(Kèm Header X-Mock-Outcome nếu ở môi trường dev/staging);
+:Gửi yêu cầu POST /api/v1/payments\n(Kèm Header X-Mock-Outcome trong development/test với PAYMENT_DEMO_MODE=true);
+
+if (Đúng môi trường và demo được bật?) then (Không)
+    :Trả về 503 Service Unavailable\n(Không tạo Payment, không đổi Order);
+    stop
+else (Có)
+endif
 
 :Backend trích xuất user (req.user.sub)\nvà kiểm tra quyền sở hữu đơn hàng;
 
 if (Đơn hàng thuộc về user?) then (Không)
-    :Trả về 404 Not Found\n(không làm lộ sự tồn tại của đơn);
+    :Trả về 403 Forbidden;
     stop
 else (Có)
 endif
 
-if (Trạng thái đơn hàng là PENDING hoặc PAYMENT_FAILED?) then (Không)
-    :Trả về 409 Conflict\n(Đơn hàng không ở trạng thái cho phép thanh toán);
-    stop
-else (Có)
-endif
-
-if (Đơn hàng đang ở PAYMENT_FAILED?) then (Có)
-    :OrderService.transition(orderId, PENDING)\nChuyển đơn hàng về PENDING để thử lại (Quyết định D1);
-else (Không)
-endif
-
-:Kiểm tra Idempotency-Key trong CSDL;
+:Trong transaction: khóa dòng Order;\nKiểm tra Idempotency-Key và requestHash\n(userId, orderId, method, outcome demo);
 
 if (Khóa đã tồn tại trong CSDL?) then (Có)
     if (Trùng requestHash (cùng body)?) then (Có)
+        if (Payment vẫn PENDING?) then (Có)
+            :Trả về 409 Conflict\n(Payment đang xử lý);
+            stop
+        endif
         :Trả về kết quả Payment đã lưu (HTTP 200)\n(Không tạo giao dịch mới, không trả lỗi 500);
         stop
     else (Không)
@@ -52,9 +51,25 @@ if (Khóa đã tồn tại trong CSDL?) then (Có)
 else (Không)
 endif
 
+if (Trạng thái đơn hàng là PENDING hoặc PAYMENT_FAILED?) then (Không)
+    :Trả về 409 Conflict\n(Đơn hàng không ở trạng thái cho phép thanh toán);
+    stop
+else (Có)
+endif
+
+if (Order đã có Payment PENDING hoặc SUCCESS?) then (Có)
+    :Trả về 409 Conflict;
+    stop
+endif
+
+if (Đơn hàng đang ở PAYMENT_FAILED?) then (Có)
+    :OrdersService.transition(orderId, PENDING)\nBackend tự chuyển về PENDING để thử lại;
+else (Không)
+endif
+
 :Tạo bản ghi Payment (status = PENDING);\n(Lưu requestHash và idempotencyKey);
 
-:Mô phỏng xử lý qua Payment Gateway\n(Đọc Header X-Mock-Outcome khi NODE_ENV !== 'production');
+:Mô phỏng nội bộ, không gọi mạng;\nPayment, Order, history, paidAt và loyalty trong cùng transaction;
 
 if (Kết quả thanh toán gateway?) then (Thành công)
     :Cập nhật Payment status = SUCCESS;

@@ -24,9 +24,9 @@ Kiểm thử API `POST /api/v1/payments`, hai phương thức `E_WALLET`, `BANK_
 | TC-PAY-14 | Gateway timeout | Ghi nhận Payment `FAILED` (`failureReason: "Gateway timeout"`), Order chuyển `PAYMENT_FAILED` |
 | TC-PAY-15 | Thử lại sau khi Gateway timeout với key mới | Chuyển Order `PAYMENT_FAILED → PENDING`, thanh toán thành công chuyển `PAID` |
 | TC-PAY-16 | Header `X-Mock-Outcome: FAILED` ở môi trường dev/test | Mock gateway giả lập thất bại, Payment `FAILED`, Order `PAYMENT_FAILED` |
-| TC-PAY-17 | Frontend gửi số tiền không đúng | Backend vẫn tự trích xuất số tiền từ `Order.finalAmount` |
+| TC-PAY-17 | Frontend gửi thêm `amount` trong body | DTO từ chối `400`; giao dịch hợp lệ chỉ lấy tiền từ `Order.finalAmount` |
 | TC-PAY-18 | Lần thử trước thất bại, lần sau thành công | Lưu lịch sử các lần thử (1-N) và cập nhật Order theo kết quả thành công |
-| TC-PAY-19 | Header `X-Mock-Outcome: FAILED` ở môi trường production | Backend bỏ qua header khi `NODE_ENV === 'production'`, xử lý giao dịch thành công (`SUCCESS`), Order chuyển `PAID` |
+| TC-PAY-19 | Gọi Payment ở production, môi trường khác hoặc khi demo chưa bật | Trả `503`, không tạo Payment, không đổi Order (v1.2) |
 
 ## 3. Điều kiện nghiệm thu
 

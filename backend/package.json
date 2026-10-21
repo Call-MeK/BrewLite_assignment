@@ -6,6 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "test": "node -r ts-node/register --test test/*.test.cjs",
+    "test:payment": "node -r ts-node/register --test test/payments.test.cjs",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
