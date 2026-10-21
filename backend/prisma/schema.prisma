@@ -206,8 +206,6 @@ model Payment {
   status         PaymentStatus @default(PENDING)
   failureReason  String?       @map("failure_reason")
   transactionRef String?       @map("transaction_ref")
-  gatewayOrderId String?       @unique @map("gateway_order_id")
-  paymentUrl     String?       @map("payment_url")
   createdAt      DateTime      @default(now()) @map("created_at")
 
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)

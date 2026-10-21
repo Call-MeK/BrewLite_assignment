@@ -1,7 +1,5 @@
 # Use Case Specification – Payment
 
-> Cập nhật 20/10/2026: triển khai đã chuyển sang ZaloPay sandbox theo yêu cầu mới. Xem [thiết kế ZaloPay](zalopay-design.md) và [hướng dẫn chạy](zalopay-setup.md). Các luồng Mock dưới đây là đặc tả lịch sử; timeout gateway thật giữ PENDING để đối soát.
-
 ## 1. Thông tin chung
 
 - **Use Case ID:** UC-PAY-01
