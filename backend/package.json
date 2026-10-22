@@ -6,16 +6,18 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "test": "node -r ts-node/register --test test/*.test.cjs",
+    "test:payment": "node -r ts-node/register --test test/payments.test.cjs",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node -r dotenv/config prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

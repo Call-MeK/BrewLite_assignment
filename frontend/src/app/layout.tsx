@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
+import { AuthNav } from '@/components/auth-nav';
 
 export const metadata: Metadata = {
   title: 'BrewLite - Đặt Cà Phê Không Dùng Tiền Mặt',
@@ -17,7 +18,7 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col bg-surface text-content-primary antialiased">
         {/* Header / Navbar chuẩn bảng màu Obsidian Navy & BrewLite Blue */}
         <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-border-light shadow-sm">
-          <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="max-w-5xl mx-auto px-4 min-h-16 py-3 flex flex-wrap items-center justify-between gap-3">
             <Link href="/" className="flex items-center space-x-2">
               <span className="text-2xl font-black text-navy tracking-tight">☕ BrewLite</span>
             </Link>
@@ -32,6 +33,7 @@ export default function RootLayout({
                 Đơn hàng
               </Link>
             </nav>
+            <AuthNav />
           </div>
         </header>
 
