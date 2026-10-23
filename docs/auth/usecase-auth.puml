@@ -1,43 +1,48 @@
 @startuml
-title Phân Hệ Xác Thực (Auth) - Use Case Diagram
+title BrewLite - Use case phân hệ xác thực (thiết kế)
 left to right direction
 skinparam packageStyle rectangle
 skinparam shadowing false
 skinparam defaultFontName Arial
 
-skinparam actor {
-    BackgroundColor #F8FAFC
-    BorderColor #1E293B
+actor "Khách truy cập" as Guest
+actor "Khách hàng" as Customer
+Customer --|> Guest
+
+rectangle "BrewLite - Auth" {
+  usecase "UC-AUTH-01\nĐăng ký tài khoản" as Register
+  usecase "UC-AUTH-02\nĐăng nhập" as Login
+  usecase "UC-AUTH-03\nTruy cập API được bảo vệ" as Protected
+  usecase "UC-AUTH-04\nĐổi mật khẩu" as ChangePassword
+  usecase "Xác thực JWT" as Verify
+
+  Protected .> Verify : <<include>>
+  ChangePassword .> Verify : <<include>>
 }
 
-skinparam usecase {
-    BackgroundColor #F0FDF4
-    BorderColor #166534
-    ArrowColor #334155
-}
+Guest --> Register
+Guest --> Login
+Customer --> Protected
+Customer --> ChangePassword
 
-actor "Khách hàng (Customer)" as Customer
-actor "Hệ thống BrewLite (System)" as System
+note right of Register
+  Kiểm tra dữ liệu và email duy nhất;
+  băm mật khẩu, tạo user, cấp JWT.
+end note
 
-rectangle "«Subsystem» Phân Hệ Xác Thực & Tài Khoản (Auth)" {
-    usecase "UC-AUTH-01: Đăng ký tài khoản" as UC_Register
-    usecase "UC-AUTH-02: Đăng nhập hệ thống" as UC_Login
-    usecase "UC-AUTH-03: Xác thực JWT & Guard" as UC_VerifyToken
-    usecase "Băm mật khẩu (bcrypt hash)" as UC_HashPassword
-    usecase "Phát hành Access Token (JWT)" as UC_IssueJWT
-    usecase "Lưu thông tin User vào DB" as UC_SaveUser
+note right of Login
+  Kiểm tra thông tin đăng nhập;
+  cấp JWT khi hợp lệ.
+end note
 
-    UC_Register .> UC_HashPassword : <<include>>
-    UC_Register .> UC_SaveUser : <<include>>
-    
-    UC_Login .> UC_IssueJWT : <<include>>
-    UC_VerifyToken .> UC_IssueJWT : <<extend>>
-}
+note bottom of Protected
+  Ví dụ: tạo đơn, xem đơn cá nhân, thanh toán.
+  Thiếu/sai/hết hạn token: HTTP 401.
+end note
 
-Customer -- UC_Register
-Customer -- UC_Login
-Customer -- UC_VerifyToken
-
-System -- UC_VerifyToken
-
+note right of ChangePassword
+  Kiểm tra mật khẩu hiện tại;
+  tăng token_version để thu hồi JWT cũ;
+  cấp JWT mới cho phiên hiện tại.
+end note
 @enduml

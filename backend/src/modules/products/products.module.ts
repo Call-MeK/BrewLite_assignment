@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Controller, Get, Module, Param } from '@nestjs/common';
 import { ProductsController } from './products.controller';
 import { CategoriesController } from './categories.controller';
 import { ProductsService } from './products.service';

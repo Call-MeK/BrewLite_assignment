@@ -1,15 +1,28 @@
 import { Module } from '@nestjs/common';
-import { Controller, Get } from '@nestjs/common';
-
-@Controller('auth')
-export class AuthController {
-  @Get('health')
-  healthCheck() {
-    return { module: 'Auth', status: 'Ready for implementation (Task 7)' };
-  }
-}
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule, JwtSignOptions } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { JwtStrategy } from './jwt.strategy';
 
 @Module({
+  imports: [
+    PassportModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: (config.get<string>('JWT_EXPIRATION') || '7d') as JwtSignOptions['expiresIn'],
+        },
+      }),
+    }),
+  ],
   controllers: [AuthController],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard],
+  exports: [JwtAuthGuard],
 })
 export class AuthModule {}

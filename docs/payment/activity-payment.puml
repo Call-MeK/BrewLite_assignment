@@ -54,7 +54,7 @@ endif
 
 :Tạo bản ghi Payment (status = PENDING);\n(Lưu requestHash và idempotencyKey);
 
-:Mô phỏng xử lý qua Payment Gateway\n(Đọc Header X-Mock-Outcome khi NODE_ENV !== 'production');
+:Mô phỏng cục bộ SUCCESS/FAILED\nChỉ development/test và PAYMENT_DEMO_MODE=true\nMôi trường khác: 503, không ghi Payment;
 
 if (Kết quả thanh toán gateway?) then (Thành công)
     :Cập nhật Payment status = SUCCESS;
