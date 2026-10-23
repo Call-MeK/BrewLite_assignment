@@ -8,6 +8,13 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly statusCode: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 export async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -27,10 +34,11 @@ export async function fetchApi<T>(
     headers,
   });
 
-  const json: ApiResponse<T> = await response.json();
+  const json: ApiResponse<T> & { message?: string | string[] } = await response.json();
 
   if (!response.ok || !json.success) {
-    throw new Error((json as any).message || 'Có lỗi xảy ra khi gọi API');
+    const message = Array.isArray(json.message) ? json.message.join(', ') : json.message;
+    throw new ApiError(message || 'Có lỗi xảy ra khi gọi API', response.status);
   }
 
   return json.data;

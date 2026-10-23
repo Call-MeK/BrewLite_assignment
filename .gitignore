@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.tools/
 .pnp
 .pnp.js
 
@@ -12,7 +13,8 @@ coverage/
 out/
 build/
 dist/
-
+*.tsbuildinfo
+.history
 # Environment files - BẢO MẬT: KHÔNG COMMIT SECRET
 .env
 .env.local
