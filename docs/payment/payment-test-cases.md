@@ -1,4 +1,4 @@
-# Test Cases – Payment
+# Test Cases – Payment v1.2
 
 ## 1. Phạm vi
 
@@ -21,12 +21,15 @@ Kiểm thử API `POST /api/v1/payments`, hai phương thức `E_WALLET`, `BANK_
 | TC-PAY-11 | Cùng key, nội dung khác (`requestHash` lệch) | Từ chối request (`409 Conflict`) |
 | TC-PAY-12 | Nhiều request đồng thời dùng cùng key | Chỉ tạo một giao dịch logic trong CSDL; request thua cuộc nhận kết quả HTTP 200 đã lưu, không bị lỗi 500 |
 | TC-PAY-13 | Thử lại sau thất bại với key mới | Chuyển Order `PAYMENT_FAILED → PENDING`, tạo Payment mới với Idempotency-Key mới, không giới hạn số lần thử |
-| TC-PAY-14 | Gateway timeout | Ghi nhận Payment `FAILED` (`failureReason: "Gateway timeout"`), Order chuyển `PAYMENT_FAILED` |
-| TC-PAY-15 | Thử lại sau khi Gateway timeout với key mới | Chuyển Order `PAYMENT_FAILED → PENDING`, thanh toán thành công chuyển `PAID` |
+| TC-PAY-14 | Transaction lỗi sau khi đã ghi loyalty | Rollback Payment, Order, history, paidAt, điểm và bước reset retry |
+| TC-PAY-15 | Payment vẫn PENDING | Cùng key hoặc key mới đều trả 409, không giả thành công |
 | TC-PAY-16 | Header `X-Mock-Outcome: FAILED` ở môi trường dev/test | Mock gateway giả lập thất bại, Payment `FAILED`, Order `PAYMENT_FAILED` |
-| TC-PAY-17 | Frontend gửi số tiền không đúng | Backend vẫn tự trích xuất số tiền từ `Order.finalAmount` |
+| TC-PAY-17 | Client gửi trường amount | DTO từ chối 400; số tiền thanh toán chỉ lấy từ `Order.finalAmount` |
 | TC-PAY-18 | Lần thử trước thất bại, lần sau thành công | Lưu lịch sử các lần thử (1-N) và cập nhật Order theo kết quả thành công |
-| TC-PAY-19 | Header `X-Mock-Outcome: FAILED` ở môi trường production | Backend bỏ qua header khi `NODE_ENV === 'production'`, xử lý giao dịch thành công (`SUCCESS`), Order chuyển `PAID` |
+| TC-PAY-19 | Production hoặc demo chưa bật | Trả 503, không tạo Payment hay chuyển Order PAID |
+| TC-PAY-20 | Hai key khác nhau đồng thời cho cùng Order | Một SUCCESS, request còn lại 409; loyalty chỉ một lần |
+| TC-PAY-21 | Cùng key nhưng outcome demo thay đổi | Trả 409, không thay đổi kết quả cũ |
+| TC-PAY-22 | User khác replay key đã hoàn tất | Trả 403, không tiết lộ dữ liệu Payment |
 
 ## 3. Điều kiện nghiệm thu
 
@@ -39,4 +42,5 @@ Kiểm thử API `POST /api/v1/payments`, hai phương thức `E_WALLET`, `BANK_
 ## 4. Lịch sử thay đổi
 - v1.0 (2026-10-11): Khởi tạo danh mục Test Cases Payment.
 - v1.1 – áp dụng quyết định D1, D8 (ngày 2026-10-16).
+- v1.2 (2026-10-21): Các test HTTP + Prisma/PostgreSQL trong `backend/test/payments.test.cjs`; hướng dẫn chạy ở `api-contract-payment.md`. Chỉ dùng mock cục bộ SUCCESS/FAILED, không mô phỏng timeout mạng.
 

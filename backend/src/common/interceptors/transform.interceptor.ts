@@ -24,12 +24,11 @@ export class TransformInterceptor<T>
   ): Observable<ApiResponse<T>> {
     const ctx = context.switchToHttp();
     const response = ctx.getResponse();
-    const statusCode = response.statusCode;
 
     return next.handle().pipe(
       map((data) => ({
         success: true,
-        statusCode,
+        statusCode: response.statusCode,
         data,
         timestamp: new Date().toISOString(),
       })),
