@@ -236,7 +236,7 @@ model LoyaltyTransaction {
 model OrderStatusHistory {
   id         String      @id @default(cuid())
   orderId    String      @map("order_id")
-  fromStatus OrderStatus @map("from_status")
+  fromStatus OrderStatus? @map("from_status")
   toStatus   OrderStatus @map("to_status")
   changedBy  String?     @map("changed_by") // user, barista, system
   reason     String?
