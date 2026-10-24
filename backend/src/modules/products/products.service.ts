@@ -12,12 +12,16 @@ export class ProductsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 12;
 
-    const where: Prisma.ProductWhereInput = {
+   const where: Prisma.ProductWhereInput = {
       ...(query.search && {
-        name: { contains: query.search, mode: 'insensitive' },
-      }),
-      ...(query.category && { category: { slug: query.category } }),
-      ...(query.isAvailable !== undefined && { isAvailable: query.isAvailable }),
+         name: { contains: query.search, mode: 'insensitive' },
+          }),
+           ...(query.categoryId && { 
+         category: { 
+     id: query.categoryId 
+      } 
+    }),
+    ...(query.isAvailable !== undefined && { isAvailable: query.isAvailable }),
     };
 
     const [items, total] = await this.prisma.$transaction([
