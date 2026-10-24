@@ -1,171 +1,86 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import CategoryDropdown from '@/components/menu/CategoryDropdown';
-import SearchBar from '@/components/menu/SearchBar';
-import ProductCard from '@/components/menu/ProductCard';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { Coffee, RefreshCw, Search, ShoppingBag } from 'lucide-react';
+import { ApiError } from '@/lib/api-client';
+import { getProducts } from '@/services/product.service';
+import type { ProductSummary } from '@/types/product';
 
-interface Product {
-  id: string;
-  name: string;
-  basePrice: string;
-  imageUrl: string;
-  category: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-}
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  display_order?: number;
-  created_at?: string;
-}
+const money = (value: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
 export default function MenuPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [keyword, setKeyword] = useState('');
 
-  // Các trạng thái quản lý Loading và Lỗi
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [productError, setProductError] = useState<string | null>(null);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
-
-  // Gọi API lấy danh sách danh mục từ Backend
-  const fetchCategories = () => {
-    setIsLoadingCategories(true);
-    fetch('http://localhost:4000/api/v1/categories')
-      .then((res) => {
-        if (!res.ok) throw new Error('Không thể tải danh mục');
-        return res.json();
-      })
-      .then((resData) => {
-        const catList = resData?.data || resData;
-        if (Array.isArray(catList)) {
-          setCategories(catList);
-        }
-        setIsLoadingCategories(false);
-      })
-      .catch((err) => {
-        console.error('Lỗi tải danh mục:', err);
-        setIsLoadingCategories(false);
-      });
-  };
-
-  // Gọi API lấy danh sách sản phẩm
-  const fetchProducts = (catId: string | null) => {
-    setIsLoadingProducts(true);
-    setProductError(null);
-
-    let url = 'http://localhost:4000/api/v1/products';
-    if (catId) {
-      url += `?categoryId=${catId}`;
+  async function loadProducts() {
+    setLoading(true);
+    setError('');
+    try {
+      setProducts(await getProducts());
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Không thể kết nối máy chủ. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
     }
+  }
 
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error('Không thể kết nối đến máy chủ lấy sản phẩm');
-        return res.json();
-      })
-      .then((response) => {
-        if (response && response.data && Array.isArray(response.data.items)) {
-          setProducts(response.data.items);
-        } else if (Array.isArray(response)) {
-          setProducts(response);
-        } else {
-          setProducts([]);
-        }
-        setIsLoadingProducts(false);
-      })
-      .catch((err) => {
-        console.error('Lỗi khi gọi API sản phẩm:', err);
-        setProductError(err.message);
-        setIsLoadingProducts(false);
-      });
-  };
+  useEffect(() => { void loadProducts(); }, []);
 
-  // Gọi lần đầu khi load trang
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    fetchProducts(selectedCategoryId);
-  }, [selectedCategoryId]);
-
-  // Lọc sản phẩm theo từ khóa tìm kiếm
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = products.filter((p) =>
+    p.name.toLocaleLowerCase('vi').includes(keyword.trim().toLocaleLowerCase('vi')),
   );
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      {/* Thanh công cụ: Dropdown Danh mục + Tìm kiếm */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-        <CategoryDropdown 
-          categories={categories} 
-          onSelectCategory={(catId) => setSelectedCategoryId(catId)} 
-        />
-        <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+    <section className="space-y-7">
+      <div className="rounded-3xl bg-gradient-to-r from-[#102b46] to-[#245b70] p-7 sm:p-10 text-white shadow-lg">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#c9e4e7]">BrewLite · Menu</p>
+        <h1 className="mt-3 text-3xl sm:text-4xl font-black">Chọn món bạn yêu thích</h1>
+        <p className="mt-3 max-w-xl text-sm sm:text-base text-white/80">Khám phá đồ uống, chọn size và topping theo khẩu vị của bạn.</p>
+        <div className="mt-6 flex max-w-lg items-center gap-3 rounded-2xl bg-white px-4 py-3 text-slate-500">
+          <Search size={19} />
+          <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Tìm tên đồ uống..." className="w-full bg-transparent text-slate-800 outline-none" aria-label="Tìm sản phẩm" />
+        </div>
       </div>
 
-    
-
-     
-      {isLoadingProducts && (
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
-          <span className="ml-3 text-gray-500">Đang tải danh sách món ăn...</span>
+      {loading ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((n) => <div key={n} className="animate-pulse overflow-hidden rounded-2xl border border-border-light bg-white"><div className="h-44 bg-slate-100" /><div className="space-y-3 p-5"><div className="h-4 w-2/3 rounded bg-slate-100" /><div className="h-4 w-1/3 rounded bg-slate-100" /></div></div>)}
         </div>
-      )}
-
-      
-      {!isLoadingProducts && productError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-8 rounded-xl text-center my-6">
-          <p className="font-semibold text-lg mb-2">Đã xảy ra lỗi khi tải dữ liệu!</p>
-          <p className="text-sm text-red-500 mb-4">{productError}</p>
-          <button 
-            onClick={() => fetchProducts(selectedCategoryId)}
-            className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg font-medium transition shadow-sm"
-          >
-            Thử lại
-          </button>
+      ) : error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="font-semibold text-red-800">{error}</p>
+          <button onClick={() => void loadProducts()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-white"><RefreshCw size={16} /> Thử lại</button>
         </div>
-      )}
-
-      
-      {!isLoadingProducts && !productError && filteredProducts.length === 0 && (
-        <div className="bg-gray-50 border border-gray-200 text-gray-600 px-6 py-12 rounded-xl text-center my-6">
-          <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>
-          <p className="font-semibold text-lg text-gray-700 mb-1">Menu chưa có món nào</p>
-          <p className="text-sm text-gray-500">Hiện tại chưa có sản phẩm nào trong danh mục này hoặc hệ thống đang trống dữ liệu.</p>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-border-light bg-white p-10 text-center text-content-secondary">
+          <Coffee className="mx-auto mb-3" size={30} />
+          {products.length ? 'Không tìm thấy món phù hợp.' : 'Hiện chưa có sản phẩm nào trong thực đơn.'}
         </div>
-      )}
-
-      
-      {!isLoadingProducts && !productError && filteredProducts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => (
-            <ProductCard 
-              key={product.id} 
-              product={{
-                id: product.id,
-                name: product.name,
-                category: product.category?.name || 'Danh mục',
-                price: Number(product.basePrice),
-                image_url: product.imageUrl,
-              }} 
-            />
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((product) => (
+            <article key={product.id} className="group overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+              <Link href={`/products/${product.id}`} className="block">
+                <div className="relative flex h-48 items-center justify-center overflow-hidden bg-[#f5f0e8]">
+                  {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <Coffee size={54} className="text-[#a77b50]" />}
+                  {!product.isAvailable && <span className="absolute right-3 top-3 rounded-full bg-slate-900/85 px-3 py-1 text-xs font-bold text-white">Hết hàng</span>}
+                </div>
+                <div className="p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">{product.categoryName || 'BrewLite selection'}</p>
+                  <h2 className="mt-2 text-lg font-bold text-navy">{product.name}</h2>
+                  <p className="mt-2 text-base font-extrabold text-primary">{money(product.basePrice)}</p>
+                  <p className="mt-2 text-sm text-content-secondary">Tùy chọn size và topping theo sở thích</p>
+                  <span className="mt-5 inline-flex items-center gap-2 font-semibold text-navy">{product.isAvailable ? 'Xem chi tiết' : 'Xem sản phẩm'} <ShoppingBag size={16} /></span>
+                </div>
+              </Link>
+            </article>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
