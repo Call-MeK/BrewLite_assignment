@@ -1,105 +1,94 @@
-# 🔐 ĐẶC TẢ USE CASE MENU SẢN PHẨM (PRODUCT CATALOG)
-### Tác giả: Đinh Nhật Lan (Owner Feature: Product Catalog)
+USE CASE MENU SẢN PHẨM (PRODUCT CATALOG)
+### Thành viên: Võ Thị Thủy 
+### Phân vai: Owner Feature
 **Dự án:** BrewLite – Hệ Thống Đặt Cà Phê Không Dùng Tiền Mặt  
 **Môn học:** Công nghệ Phần mềm | **Học kỳ:** I – 2026–2027  
 **Phạm vi:** Đáp ứng Task 6 (Menu sản phẩm): Đặc tả chức năng xem menu, chức năng tìm kiếm và lọc sản phẩm
 
 ---
 
-## 1. TỔNG QUAN PHÂN HỆ (MODULE OVERVIEW)
-Phân hệ Danh mục sản phẩm (Product Catalog) chịu trách nhiệm cung cấp danh sách đồ uống để khách hàng xem menu, tìm kiếm và lọc sản phẩm theo các tiêu chí được hệ thống hỗ trợ. Phân hệ lấy dữ liệu sản phẩm từ Backend thông qua API `GET /api/v1/products` và hiển thị thông tin tương ứng trên giao diện người dùng.
+## 1. OVERVIEW
+Danh mục sản phẩm (Product Catalog) cung cấp danh sách đồ uống lên menu để khách hàng xem, tìm kiếm và lọc sản phẩm theo các tiêu chí được hệ thống hỗ trợ. Lấy dữ liệu sản phẩm từ Backend thông qua API `GET /api/v1/products` và hiển thị thông tin tương ứng trên giao diện người dùng.
 
-* **Các ca sử dụng cốt lõi:**
-  1. **`UC-CAT-01`**: Xem menu sản phẩm (View Menu).
-  2. **`UC-CAT-02`**: Tìm kiếm sản phẩm theo tên (Search Products).
-  3. **`UC-CAT-03`**: Lọc sản phẩm theo danh mục (Filter Products by Category).
+* **Các Usecase**
+  1. **`UC2.1`**: Xem menu sản phẩm.
+  2. **`UC2.2`**: xem sản phẩm theo danh mục.
+  3. **`UC2.3`**: Tìm kiếm sản phẩm theo tên.
 
 ---
 
-## 2. BẢNG ĐẶC TẢ CHI TIẾT (USE CASE SPECIFICATIONS)
+## 2. BẢNG ĐẶC TẢ CHI TIẾT 
 
-### 📄 UC-CAT-01: XEM MENU SẢN PHẨM (VIEW MENU)
+### UC2.1: XEM MENU SẢN PHẨM 
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
-| **Mã Use Case** | `UC-CAT-01` |
+| **Use Case ID** | `UC2.1` |
 | **Tên Use Case** | Xem menu sản phẩm |
-| **Actor chính** | Khách hàng (Customer) |
-| **Mục đích** | Xem danh sách sản phẩm đang được mở bán và còn hàng |
-| **Điều kiện tiên quyết (Pre-condition)** | Người dùng đang mở ứng dụng web BrewLite |
-| **Điều kiện kết thúc (Post-condition)** | Danh sách sản phẩm phù hợp được hiển thị trên giao diện Menu |
-
-#### Luồng sự kiện chính (Main Flow - Happy Path):
-1. Khách hàng truy cập trang chủ và chọn chức năng **Khám phá thực đơn** (hoặc điều hướng đến route `/menu`).
-2. Hệ thống điều hướng đến trang Menu.
-3. Frontend hiển thị trạng thái đang tải dữ liệu (Loading Skeleton).
-4. Frontend gọi API `GET /api/v1/products` đến Backend.
-5. Backend nhận yêu cầu, truy vấn CSDL để lấy các sản phẩm thỏa mãn điều kiện `isAvailable = true` và `stock > 0`.
-6. Backend trả về danh sách sản phẩm theo hợp đồng API chuẩn bọc qua `TransformInterceptor`.
-7. Frontend nhận dữ liệu, trích xuất danh sách danh mục (Category tabs) theo thứ tự xuất hiện, và hiển thị danh sách sản phẩm bằng các `ProductCard`.
-8. Khách hàng xem thông tin sản phẩm trên menu (tên, ảnh, giá gốc, nhãn danh mục, phụ thu kích cỡ).
-
-#### Các luồng thay thế & ngoại lệ (Alternative & Exception Flows):
-* **A1 – Chưa có sản phẩm mở bán:**
-  Tại bước 6, nếu Backend trả về mảng `data` rỗng (`[]`), Frontend hiển thị giao diện danh sách rỗng (Empty State) thông báo quán chưa mở bán món nào thay vì hiển thị lỗi.
-* **E1 – Lỗi tải dữ liệu:**
-  Tại bước 4 hoặc bước 5, nếu yêu cầu lấy dữ liệu thất bại do lỗi mạng hoặc Backend phản hồi lỗi HTTP 500, Frontend hiển thị thông báo lỗi kết nối kèm nút bấm **Thử lại** (`Retry`).
-
----
-
-### 📄 UC-CAT-02: TÌM KIẾM SẢN PHẨM THEO TÊN (SEARCH PRODUCTS)
-
-| Thuộc tính | Chi tiết đặc tả |
-| :--- | :--- |
-| **Mã Use Case** | `UC-CAT-02` |
-| **Tên Use Case** | Tìm kiếm sản phẩm theo tên (Search Products) |
-| **Actor chính** | Khách hàng (Customer) |
-| **Mục đích** | Giúp khách hàng tìm nhanh sản phẩm theo từ khóa tên món |
-| **Pre-condition** | Khách hàng đang ở trang Menu và danh sách sản phẩm đã được tải thành công |
-| **Post-condition** | Danh sách sản phẩm trên màn hình được cập nhật theo từ khóa tìm kiếm |
-
-#### Luồng sự kiện chính (Main Flow):
-1. Khách hàng nhập từ khóa vào ô tìm kiếm trên trang Menu.
-2. Frontend tiếp nhận từ khóa theo thời gian thực (hỗ trợ debounce).
-3. Hệ thống chuẩn hóa từ khóa: cắt bỏ khoảng trắng thừa đầu cuối, chuyển về chữ thường, và chuẩn hóa bỏ dấu tiếng Việt (ví dụ: "ca phe" hay "cà phê" đều khớp).
-4. Frontend lọc trực tiếp (client-side) trên danh sách sản phẩm đã tải, so sánh từ khóa với tên sản phẩm đã chuẩn hóa bỏ dấu.
-5. Frontend kết hợp đồng thời với điều kiện lọc danh mục hiện tại (nếu có).
-6. Hệ thống hiển thị danh sách các thẻ sản phẩm phù hợp.
-7. Khách hàng xem kết quả tìm kiếm.
-
-#### Các luồng thay thế & ngoại lệ (Alternative & Exception Flows):
-* **A1 – Không tìm thấy sản phẩm phù hợp:**
-  Tại bước 4, nếu không có món nào thỏa mãn từ khóa, Frontend hiển thị trạng thái "Không tìm thấy kết quả" kèm gợi ý thử từ khóa khác hoặc nút "Xóa bộ lọc".
-* **A2 – Xóa từ khóa tìm kiếm:**
-  Tại bước 1, khi khách hàng xóa sạch ô tìm kiếm, Frontend tự động hiển thị lại danh sách sản phẩm theo bộ lọc danh mục hiện tại.
-
----
-
-### 📄 UC-CAT-03: LỌC SẢN PHẨM THEO DANH MỤC (FILTER PRODUCTS BY CATEGORY)
-
-| Thuộc tính | Chi tiết đặc tả |
-| :--- | :--- |
-| **Mã Use Case** | `UC-CAT-03` |
-| **Tên Use Case** | Lọc sản phẩm theo danh mục (Filter Products by Category) |
 | **Actor** | Khách hàng (Customer) |
-| **Mục đích** | Giúp khách hàng nhanh chóng duyệt các món thuộc nhóm đồ uống mong muốn |
-| **Pre-condition** | Khách hàng đang ở trang Menu và danh sách sản phẩm đã được tải thành công |
-| **Post-condition** | Danh sách sản phẩm được cập nhật theo tab danh mục được chọn |
+| **Tóm tắt** | Khách hàng truy cập vào trang Menu để xem danh sách toàn bộ sản phẩm đồ uống đang được mở bán và còn hàng |
+| **Tiền điều kiện** | Người dùng truy cập vào trang web hoặc ứng dụng BrewLite |
+| **Hậu điều kiện** | Danh sách sản phẩm được hiển thị đầy đủ trên trang giao diện Menu |
 
-#### Luồng sự kiện chính (Main Flow):
-1. Frontend hiển thị thanh danh mục gồm tab "Tất cả", tiếp theo là các tab danh mục trích xuất từ dữ liệu món (ví dụ: "Cà phê", "Trà & Trái cây"), và tab "Khác" (nếu có món không có danh mục).
-2. Khách hàng nhấn chọn một tab danh mục.
-3. Frontend kích hoạt trạng thái được chọn (Active Tab) cho danh mục đó.
-4. Frontend lọc danh sách món: chỉ giữ lại các sản phẩm có `categoryName` trùng với tab được chọn (hoặc `categoryName == null` nếu chọn tab "Khác").
-5. Frontend kết hợp đồng thời với từ khóa tìm kiếm hiện tại (nếu có).
-6. Hệ thống cập nhật danh sách thẻ sản phẩm hiển thị trên màn hình.
-7. Khách hàng duyệt các món trong danh mục.
+#### Luồng sự kiện chính:
+1. Khách hàng truy cập vào trang menu
+2. Hệ thống gửi yêu cầu GET /api/v1/products lên máy chủ
+3. Frontend hiển thị trạng thái đang tải dữ liệu
+4. Frontend gọi API `GET /api/v1/products` đến Backend.
+5. Backend kiểm tra và trả về danh sách các sản phẩm thỏa mãn điều kiện (isAvailable === true và stock > 0).
+6. Frontend nhận dữ liệu, tự động trích xuất danh sách các danh mục và hiển thị toàn bộ sản phẩm ra màn hình
+7. Khách hàng xem thông tin sản phẩm trên menu 
 
-#### Các luồng thay thế & ngoại lệ (Alternative & Exception Flows):
-* **A1 – Khách hàng chọn tab "Tất cả":**
-  Tại bước 2, khi khách hàng chọn "Tất cả", Frontend loại bỏ điều kiện lọc danh mục và hiển thị toàn bộ sản phẩm (vẫn áp dụng từ khóa tìm kiếm nếu có).
-* **A2 – Danh mục không có món thỏa mãn từ khóa:**
-  Tại bước 5, nếu trong danh mục được chọn không có món nào khớp với từ khóa tìm kiếm hiện tại, Frontend hiển thị thông báo danh sách trống kèm nút xóa tìm kiếm.
+#### Các luồng thay thế và ngoại lệ
+* **– Chưa có sản phẩm mở bán:**
+  Hiển thị giao diện danh sách rỗng, thông báo menu chưa có món
+* **– Lỗi tải dữ liệu:**
+  Hiển thị thông báo lỗi kết nối kèm nút bấm **Thử lại** 
+
+---
+
+### UC2.2: XEM SẢN PHẨM THEO DANH MỤC
+
+| Thuộc tính | Chi tiết đặc tả |
+| :--- | :--- |
+| **Use Case ID** | `UC2.2` |
+| **Tên Use Case** | Xem sản phẩm theo danh mục |
+| **Actor** | Khách hàng (Customer) |
+| **Tóm tắt** | Khách hàng chọn vào các lựa chọn danh mục có sẵn để lọc sản phẩm và hiển thì sản phẩm theo mong muốn |
+| **Tiền điều kiện** | Khách hàng đang ở trang Menu và danh sách sản phẩm đã được tải thành công |
+| **Hậu điều kiện** | Màn hình hiển thì các sản phẩm thuộc danh mục mà khách hàng chọn |
+
+#### Luồng sự kiện chính:
+1. Khách hàng nhấn chọn một tab danh mục trên thanh điều hướng (ví dụ: "Cà phê", "Trà", "Tất cả").
+2. Hệ thống thực hiện lọc danh sách sản phẩm cdựa trên tên danh mục đã chọn.
+3. Hệ thống cập nhật danh sách hiển thị chỉ bao gồm các sản phẩm thuộc danh mục tương ứng.
+
+
+#### Các luồng thay thế & ngoại lệ
+* **-Danh mục không có sản phẩm**
+  Màn hình hiển thị trạng thái "Không có sản phẩm nào trong danh mục này
+
+---
+
+### 📄 UC2.3: TÌM SẢN PHẨM THEO TÊN
+| Thuộc tính | Chi tiết đặc tả |
+| :--- | :--- |
+| **Use Case ID** | `UC2.3` |
+| **Tên Use Case** | Tìm sản phẩm theo tên |
+| **Actor** | Khách hàng (Customer) |
+| **Tóm tắt** | Khách hàng nhập từ khóa vào ô tìm kiếm để tìm nhanh món nước mong muốn. |
+| **Tiền điều kiện** | Khách hàng đang ở trang Menu và danh sách sản phẩm đã được tải thành công |
+| **Hậu điều kiện** | Giao diện chỉ hiển thị các sản phẩm có tên chứa từ khóa tìm kiếm |
+
+#### Luồng sự kiện chính
+1. Khách hàng gõ từ khóa vào ô tìm kiếm trên trang Menu
+2. Hệ thống chuẩn hóa chuỗi khách hàng nhập
+3. Hệ thống lọc danh sách sản phẩm thỏa mãn chứa từ khóa tìm kiếm
+4. Danh sách kết quả các sản phẩm được cập nhật thời gian thực (real-time) ra màn hình.
+
+#### Các luồng thay thế & ngoại lệ
+* **-Không tìm thấy kết quả phù hợp**
+  Hệ thống hiển thị thông báo không có kết quả phù hợp
 
 ---
 
