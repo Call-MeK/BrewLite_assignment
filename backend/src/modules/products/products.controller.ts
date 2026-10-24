@@ -10,9 +10,5 @@ export class ProductsController {
   findAll(@Query() query: QueryProductDto) {
     return this.productsService.findAll(query);
   }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(id);
-  }
+  
 }

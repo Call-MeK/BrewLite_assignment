@@ -5,8 +5,8 @@ export class QueryProductDto {
   @IsOptional() @IsString()
   search?: string;
 
-  @IsOptional() @IsString()
-  category?: string; // slug danh mục, ví dụ "ca-phe"
+@IsOptional() @IsString()
+categoryId?: string;
 
   @IsOptional()
   @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
