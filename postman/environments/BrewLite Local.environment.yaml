@@ -6,3 +6,11 @@ values:
     value: ''
   - key: idempotencyKey
     value: ''
+  - key: token
+    value: ''
+  - key: userId
+    value: ''
+  - key: productId
+    value: ''
+  - key: orderId
+    value: ''

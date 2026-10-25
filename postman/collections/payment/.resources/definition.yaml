@@ -1,3 +1,5 @@
 $kind: collection
 name: BrewLite API smoke test
 description: Register, browse products, create an order, and pay with the local mock gateway.
+variables:
+  latestOrderId: ""
