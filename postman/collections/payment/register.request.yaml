@@ -17,6 +17,8 @@ scripts:
   - type: beforeRequest
     language: text/javascript
     code: |-
+      for (const key of ['token', 'userId', 'productId', 'orderId']) pm.environment.unset(key);
+      pm.collectionVariables.unset('latestOrderId');
       pm.environment.set('testEmail', 'postman-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');
       pm.environment.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));
   - type: afterResponse

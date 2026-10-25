@@ -184,6 +184,8 @@ Collection cục bộ ở `postman/collections/payment` chạy theo thứ tự h
 postman collection run postman/collections/payment -e "postman/environments/BrewLite Local.environment.yaml" --no-report-events
 ```
 
+Trong Postman Desktop, chạy Orders rồi Payment trong cùng collection. Orders lưu `data.id` mới vào biến collection `latestOrderId`, và Payment dùng biến này; giá trị `orderId` cũ trong Environment không ảnh hưởng. Nếu collection được import trước khi sửa, hãy import lại từ `postman/collections/payment`.
+
 Collection tạo tài khoản, đơn hàng và thanh toán mới trong database mà `baseUrl` trỏ tới; dùng database thử nghiệm nếu không muốn thêm dữ liệu vào database ứng dụng.
 
 1. Trong `backend/.env`, đặt `NODE_ENV=development`, `PAYMENT_DEMO_MODE=true` và DATABASE_URL/JWT_SECRET hợp lệ; khởi động lại backend.

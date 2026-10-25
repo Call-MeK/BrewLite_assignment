@@ -13,6 +13,10 @@ body:
       "password": "test123456"
     }
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.environment.unset('token');
   - type: afterResponse
     language: text/javascript
     code: |-

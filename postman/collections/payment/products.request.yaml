@@ -3,6 +3,10 @@ url: '{{baseUrl}}/products'
 method: GET
 order: 4000
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.environment.unset('productId');
   - type: afterResponse
     language: text/javascript
     code: |-

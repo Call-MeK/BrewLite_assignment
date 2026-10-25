@@ -14,6 +14,12 @@ body:
       "items": [{ "productId": "{{productId}}", "size": "M", "quantity": 1 }]
     }
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.environment.unset('orderId');
+      pm.collectionVariables.unset('latestOrderId');
+      pm.environment.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));
   - type: afterResponse
     language: text/javascript
     code: |-
@@ -23,4 +29,5 @@ scripts:
         pm.expect(order.status).to.eql('PENDING');
         pm.expect(order.id).to.be.a('string').and.not.empty;
         pm.environment.set('orderId', order.id);
+        pm.collectionVariables.set('latestOrderId', order.id);
       });

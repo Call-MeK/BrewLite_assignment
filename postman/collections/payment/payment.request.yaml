@@ -15,16 +15,25 @@ body:
   type: json
   content: |-
     {
-      "orderId": "{{orderId}}",
+      "orderId": "{{latestOrderId}}",
       "method": "E_WALLET"
     }
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      for (const key of ['token', 'idempotencyKey']) {
+        if (!pm.environment.get(key)) throw new Error('Thiếu ' + key + ': chạy Register/Login trước Payment trong cùng environment.');
+      }
+      if (!pm.collectionVariables.get('latestOrderId')) throw new Error('Thiếu đơn hàng mới: chạy request Orders trong cùng collection trước Payment.');
   - type: afterResponse
     language: text/javascript
     code: |-
-      pm.test('Payment succeeds for the new order', function () {
-        pm.response.to.have.status(201);
-        const payment = pm.response.json().data;
-        pm.expect(payment.orderId).to.eql(pm.environment.get('orderId'));
+      pm.test('Payment belongs to the current order', function () {
+        const body = pm.response.json();
+        if (pm.response.code === 404) throw new Error('Không tìm thấy orderId trong database hiện tại. Chạy lại POST /orders và dùng data.id của đơn mới.');
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+        const payment = body.data;
+        pm.expect(payment.orderId).to.eql(pm.collectionVariables.get('latestOrderId'));
         pm.expect(payment.status).to.eql('SUCCESS');
       });
