@@ -1,0 +1,35 @@
+$kind: http-request
+url: '{{baseUrl}}/orders'
+method: POST
+order: 6000
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "items": [{ "productId": "{{productId}}", "size": "M", "quantity": 1 }],
+      "pointsToUse": 0
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.environment.unset('orderId');
+      pm.collectionVariables.unset('latestOrderId');
+      pm.environment.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Order is pending and has an ID', function () {
+        pm.response.to.have.status(201);
+        const order = pm.response.json().data;
+        pm.expect(order.status).to.eql('PENDING');
+        pm.expect(order.id).to.be.a('string').and.not.empty;
+        pm.expect(order.pointsRedeemed).to.eql(0);
+        pm.environment.set('orderId', order.id);
+        pm.collectionVariables.set('latestOrderId', order.id);
+      });

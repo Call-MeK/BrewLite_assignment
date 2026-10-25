@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fetchApi } from '@/lib/api-client';
@@ -25,7 +25,13 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [returnPath, setReturnPath] = useState('/');
   const isRegister = mode === 'register';
+
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (next === '/cart' || next === '/orders') setReturnPath(next);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,7 +55,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
       );
       localStorage.setItem('token', result.accessToken);
       window.dispatchEvent(new Event('auth-changed'));
-      router.replace('/');
+      router.replace(returnPath);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Không thể xác thực tài khoản');
@@ -131,7 +137,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
 
       <p className="mt-5 text-center text-sm text-content-secondary">
         {isRegister ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}{' '}
-        <Link href={isRegister ? '/login' : '/register'} className="font-semibold text-primary hover:underline">
+        <Link href={`${isRegister ? '/login' : '/register'}${returnPath !== '/' ? `?next=${encodeURIComponent(returnPath)}` : ''}`} className="font-semibold text-primary hover:underline">
           {isRegister ? 'Đăng nhập' : 'Đăng ký'}
         </Link>
       </p>

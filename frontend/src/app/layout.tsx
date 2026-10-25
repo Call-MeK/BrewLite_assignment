@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
 import { AuthNav } from '@/components/auth-nav';
+import { CartPopover } from '@/components/cart-popover';
+import { Coffee } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'BrewLite - Đặt Cà Phê Không Dùng Tiền Mặt',
@@ -15,36 +17,35 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className="min-h-screen flex flex-col bg-surface text-content-primary antialiased">
-        {/* Header / Navbar chuẩn bảng màu Obsidian Navy & BrewLite Blue */}
-        <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-border-light shadow-sm">
-          <div className="max-w-5xl mx-auto px-4 min-h-16 py-3 flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="text-2xl font-black text-navy tracking-tight">☕ BrewLite</span>
+      <body className="min-h-screen flex flex-col bg-[#fcf8f3] text-content-primary antialiased">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-navy">Bỏ qua điều hướng</a>
+        <header className="sticky top-0 z-50 border-b border-border-light bg-white/95 backdrop-blur">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+            <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-xl font-black tracking-tight text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white"><Coffee size={21} aria-hidden="true" /></span>
+              BrewLite
             </Link>
-            <nav className="flex items-center space-x-6 text-sm font-medium">
-              <Link href="/menu" className="text-content-secondary hover:text-primary transition">
+            <nav aria-label="Điều hướng chính" className="order-3 flex w-full items-center gap-1 overflow-x-auto text-sm font-semibold lg:order-2 lg:w-auto">
+              <Link href="/" className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-content-secondary transition-colors hover:bg-primary-light hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                Trang chủ
+              </Link>
+              <Link href="/menu" className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-content-secondary transition-colors hover:bg-primary-light hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
                 Thực đơn
               </Link>
-              <Link href="/cart" className="text-content-secondary hover:text-primary transition">
-                Giỏ hàng
-              </Link>
-              <Link href="/orders" className="text-content-secondary hover:text-primary transition">
-                Đơn hàng
+              <Link href="/orders" className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-content-secondary transition-colors hover:bg-primary-light hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                Lịch sử đơn hàng
               </Link>
             </nav>
-            <AuthNav />
+            <div className="order-2 flex items-center gap-3 lg:order-3"><CartPopover /><AuthNav /></div>
           </div>
         </header>
 
-        {/* Nội dung chính */}
-        <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+        <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
           {children}
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-border-light py-6 text-center text-xs text-content-secondary bg-surface-secondary">
-          BrewLite © 2026 – Đồ án Công nghệ Phần mềm
+        <footer className="border-t border-border-light bg-white py-6 text-center text-sm text-content-secondary">
+          BrewLite © 2026 · Cà phê theo cách của bạn
         </footer>
       </body>
     </html>

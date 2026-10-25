@@ -90,17 +90,18 @@ export class ProductsService {
   async getProductDetail(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { sizePrices: true },
+      include: { sizePrices: true, category: { select: { slug: true } } },
     });
 
     if (!product) {
       throw new NotFoundException('Không tìm thấy sản phẩm');
     }
 
-    const toppings = await this.prisma.topping.findMany({
+    const toppings = product.category?.slug === 'ca-phe' ? [] : await this.prisma.topping.findMany({
       where: {
         isAvailable: true,
         stock: { gt: 0 },
+        name: { in: ['Vải', 'Đác thơm', 'Trân châu hoàng kim'] },
       },
       orderBy: { name: 'asc' },
     });
@@ -111,6 +112,7 @@ export class ProductsService {
       imageUrl: product.imageUrl,
       basePrice: Number(product.basePrice),
       currency: 'VND',
+      categorySlug: product.category?.slug ?? null,
       isAvailable: product.isAvailable && product.stock > 0,
       sizePrices: product.sizePrices
         .sort(

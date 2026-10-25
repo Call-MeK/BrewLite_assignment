@@ -1,4 +1,12 @@
 $kind: http-request
-url: ""
+url: '{{baseUrl}}/auth/health'
 method: GET
-order: 2000
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Auth health is ready', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().data.status).to.eql('Ready');
+      });

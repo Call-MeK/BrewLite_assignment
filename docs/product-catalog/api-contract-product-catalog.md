@@ -58,12 +58,4 @@ Các kịch bản lỗi chi tiết:
 
 ---
 
-21/10/2026
-Hoàn thiện hàm lấy danh sách sản phẩm (findAll) tích hợp phân trang (page, limit)
-Xây dựng được các điều kiện lọc linh hoạt trong Prisma (where) bao gồm: tìm kiếm theo tên (search), lọc theo danh mục (category), và lọc theo trạng thái sẵn có (isAvailable).
-Hoàn thiện hàm lấy chi tiết sản phẩm theo ID (findOne) và hàm truy vấn danh mục (findCategories).
-Cập nhật Usecase Diagram cho Products Diagram.
-
----
-
-Kế hoạch: Phát triển tìm kiếm nâng cao, tìm kiếm đồng thời được các danh mục ví dụ: cà phê và còn hàng
+25/10/2026: `GET /api/v1/products` trả mảng sản phẩm đang bán và còn hàng như hợp đồng phía trên; `GET /api/v1/products/:id` trả chi tiết sản phẩm. Các hàm phân trang/lọc ở service chưa được mở thành API công khai.

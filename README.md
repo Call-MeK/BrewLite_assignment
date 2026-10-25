@@ -12,6 +12,8 @@ Dành cho tất cả các thành viên trong nhóm clone về chạy lần đầ
 ### Bước 1: Khởi động Cơ sở dữ liệu PostgreSQL (Docker)
 Đảm bảo bạn đã bật **Docker Desktop**, sau đó mở terminal tại thư mục gốc của dự án (`BrewLite/`):
 ```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
 docker compose up -d
 ```
 > Lệnh này sẽ tự động tải image PostgreSQL 16 và khởi chạy database `brewlite_db` tại cổng `5432`.
@@ -22,6 +24,7 @@ Mở một cửa sổ Terminal mới:
 cd backend
 npm install
 npm run prisma:generate
+npx prisma migrate deploy
 npm run start:dev
 ```
 * **API URL:** `http://localhost:4000/api/v1`
@@ -71,14 +74,26 @@ Trước khi bắt tay vào code các tính năng tiếp theo, tất cả thành
 2. [Quy chuẩn đặt tên API & Database](docs/naming-convention.md)
 3. [Checklist review code trước khi merge](docs/checklist-review.md)
 
-## Chạy trên Windows với môi trường cục bộ trong thư mục này
+## Chạy trên Windows
 
-Môi trường cục bộ dùng Node.js 22 và PostgreSQL 16 trong `.tools/`. Chạy lần lượt từ thư mục gốc, mỗi lệnh trong một terminal riêng:
+Cài Node.js và Docker Desktop. Từ thư mục gốc, tạo cấu hình rồi khởi động database:
 
 ```powershell
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
 .\dev-db.cmd
+cd backend
+npm.cmd install
+npm.cmd run prisma:generate
+npx.cmd prisma migrate deploy
+cd ..
+```
+
+Chạy hai lệnh sau trong hai terminal riêng:
+
+```powershell
 .\dev-backend.cmd
 .\dev-frontend.cmd
 ```
 
-Mở `http://localhost:3000` cho giao diện hoặc `http://localhost:4000/api/v1/products` cho API. Dùng `.\stop-db.cmd` để tắt PostgreSQL. Các tệp `.env`, `backend/.env` và `frontend/.env.local` chứa cấu hình cục bộ và không được commit.
+Mở `http://localhost:3000` cho giao diện hoặc `http://localhost:4000/api/v1/products` cho API. Dùng `.\stop-db.cmd` để dừng PostgreSQL do Docker Compose quản lý. Các tệp `.env`, `backend/.env` và `frontend/.env.local` chứa cấu hình cục bộ và không được commit.

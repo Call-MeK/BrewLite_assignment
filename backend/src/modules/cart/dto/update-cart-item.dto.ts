@@ -1,12 +1,21 @@
-import { IsInt, Min, IsOptional, IsEnum } from "class-validator";
-import { ProductSize } from "@prisma/client";
+import { ProductSize } from '@prisma/client';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsEnum, IsInt, IsString, Max, Min, ValidateIf } from 'class-validator';
 
 export class UpdateCartItemDto {
-  @IsInt({ message: "Số lượng phải là một số nguyên" })
-  @Min(1, { message: "Số lượng tối thiểu là 1" })
-  quantity: number;
+  @ValidateIf((_, value) => value !== undefined)
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  quantity?: number;
 
-  @IsOptional()
-  @IsEnum(ProductSize, { message: "Size không hợp lệ (Chỉ nhận S, M, L)" })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsEnum(ProductSize)
   size?: ProductSize;
+
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ArrayUnique()
+  @IsString({ each: true })
+  toppingIds?: string[];
 }

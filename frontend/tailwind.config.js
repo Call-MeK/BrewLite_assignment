@@ -8,37 +8,36 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // BrewLite Design System Palette
         navy: {
-          DEFAULT: '#0A0E1A', // Obsidian Navy
-          dark: '#0A0E1A',
+          DEFAULT: '#2E211B',
+          dark: '#2E211B',
         },
         primary: {
-          DEFAULT: '#2D6BE4', // BrewLite Blue
-          hover: '#1B56C7',
-          light: '#EEF4FD',
+          DEFAULT: '#8A4525',
+          hover: '#6F351D',
+          light: '#F7E8DA',
         },
         success: {
-          DEFAULT: '#10D98A', // Mint Green
-          light: '#E6FCF3',
+          DEFAULT: '#2F8061',
+          light: '#E7F3EC',
         },
         coffee: {
-          cream: '#F7E7D9',  // Coffee Cream Accent
+          cream: '#F3E4D1',
         },
         surface: {
-          DEFAULT: '#FFFFFF', // White
-          secondary: '#F5F7FA', // Soft Gray
+          DEFAULT: '#FFFFFF',
+          secondary: '#FAF6F0',
         },
         content: {
-          primary: '#111827',   // Text Dark
-          secondary: '#6B7280', // Text Gray
+          primary: '#2E211B',
+          secondary: '#6B5A50',
         },
         border: {
-          light: '#E5E7EB',     // Light Border
+          light: '#E7D8CA',
         },
         danger: {
-          DEFAULT: '#FF6B6B',   // Coral Red
-          light: '#FFF0F0',
+          DEFAULT: '#B42318',
+          light: '#FFF0ED',
         },
       },
     },
