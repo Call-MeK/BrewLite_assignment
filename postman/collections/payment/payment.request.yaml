@@ -1,0 +1,30 @@
+$kind: http-request
+url: '{{baseUrl}}/payments'
+method: POST
+order: 7000
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+  - key: Content-Type
+    value: application/json
+  - key: Idempotency-Key
+    value: '{{idempotencyKey}}'
+  - key: X-Mock-Outcome
+    value: SUCCESS
+body:
+  type: json
+  content: |-
+    {
+      "orderId": "{{orderId}}",
+      "method": "E_WALLET"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Payment succeeds for the new order', function () {
+        pm.response.to.have.status(201);
+        const payment = pm.response.json().data;
+        pm.expect(payment.orderId).to.eql(pm.environment.get('orderId'));
+        pm.expect(payment.status).to.eql('SUCCESS');
+      });

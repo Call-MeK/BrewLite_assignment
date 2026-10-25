@@ -1,8 +1,10 @@
 # 📜 API CONTRACT: CART VALIDATION & CHECKOUT
 
-Mặc dù Giỏ hàng được quản lý dưới dạng Local State tại client (Zustand) và không có API CRUD riêng cho giỏ hàng, thao tác quan trọng nhất của phân hệ này là chuẩn bị Request Payload chuẩn xác để giao tiếp với API tạo đơn hàng `POST /api/v1/orders`. 
+Frontend hiện lưu giỏ hàng trong Local Storage. Backend cũng có API giỏ hàng cho client muốn lưu trên máy chủ; bước checkout vẫn gửi payload tới `POST /api/v1/orders`.
 
 Tài liệu này là "Hợp đồng giao tiếp" chính thức giữa Cart (Frontend) và Orders Module (Backend).
+
+API giỏ hàng máy chủ gồm `GET /api/v1/cart/:userId`, `POST /api/v1/cart/items`, `PATCH /api/v1/cart/items/:id`, `DELETE /api/v1/cart/items/:id` và `DELETE /api/v1/cart/:cartId/clear`. Tất cả yêu cầu Bearer JWT; `userId`, `cartId` và `itemId` phải thuộc người dùng đã đăng nhập. Mỗi món có `quantity` từ 1 đến 99, `size` hợp lệ và tối đa 3 `toppingIds` không trùng. Phản hồi dùng một lớp `data` theo `TransformInterceptor`.
 
 ---
 

@@ -178,8 +178,16 @@ Hai dòng development/test chỉ có hiệu lực khi `PAYMENT_DEMO_MODE=true`.
 
 ## 9. Kiểm tra bằng Postman và chạy test
 
+Collection cục bộ ở `postman/collections/payment` chạy theo thứ tự health → đăng ký → đăng nhập → sản phẩm → chi tiết → tạo đơn → thanh toán. Chọn môi trường `postman/environments/BrewLite Local.environment.yaml`, hoặc chạy từ thư mục gốc:
+
+```powershell
+postman collection run postman/collections/payment -e "postman/environments/BrewLite Local.environment.yaml" --no-report-events
+```
+
+Collection tạo tài khoản, đơn hàng và thanh toán mới trong database mà `baseUrl` trỏ tới; dùng database thử nghiệm nếu không muốn thêm dữ liệu vào database ứng dụng.
+
 1. Trong `backend/.env`, đặt `NODE_ENV=development`, `PAYMENT_DEMO_MODE=true` và DATABASE_URL/JWT_SECRET hợp lệ; khởi động lại backend.
-2. `POST /api/v1/auth/login` với tài khoản hợp lệ; lấy `data.accessToken`. Chuẩn bị Order PENDING thuộc `data.user.id` qua DB/Prisma Studio (API tạo Order chưa được triển khai).
+2. `GET /api/v1/products` để lấy `productId` có size `M`; `POST /api/v1/auth/register` hoặc `/auth/login` để lấy `data.accessToken`; sau đó `POST /api/v1/orders` với Bearer token và body `{"items":[{"productId":"<id>","size":"M","quantity":1}]}` để lấy Order PENDING.
 3. `POST /api/v1/payments`, Authorization Bearer token, Content-Type application/json, Idempotency-Key `demo-attempt-1`, X-Mock-Outcome `FAILED`, body `{"orderId":"<id>","method":"E_WALLET"}`: HTTP 200, Payment FAILED, Order PAYMENT_FAILED.
 4. Gửi lại nguyên request: cùng Payment id, không tăng số bản ghi. Đổi outcome hoặc method nhưng giữ key: HTTP 409.
 5. Đổi key thành `demo-attempt-2`, outcome SUCCESS: HTTP 201, Order PAID; history có PAYMENT_FAILED → PENDING → PAID; loyalty tăng floor(finalAmount/1000) một lần.

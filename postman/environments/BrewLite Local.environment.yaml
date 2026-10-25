@@ -1,0 +1,30 @@
+name: BrewLite Local
+values:
+  - key: baseUrl
+    value: 'http://127.0.0.1:4000/api/v1'
+    enabled: true
+    type: default
+  - key: testEmail
+    value: ''
+    enabled: true
+    type: default
+  - key: idempotencyKey
+    value: ''
+    enabled: true
+    type: default
+  - key: productId
+    value: ''
+    enabled: true
+    type: default
+  - key: orderId
+    value: ''
+    enabled: true
+    type: default
+  - key: userId
+    value: ''
+    enabled: true
+    type: default
+  - key: token
+    value: ''
+    enabled: true
+    type: secret

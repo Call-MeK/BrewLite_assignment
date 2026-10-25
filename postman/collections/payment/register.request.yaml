@@ -1,0 +1,32 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/register'
+method: POST
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{testEmail}}",
+      "password": "test123456",
+      "fullName": "Postman Test"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.environment.set('testEmail', 'postman-' + pm.variables.replaceIn('{{$guid}}') + '@example.test');
+      pm.environment.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Registration returns a JWT and user', function () {
+        pm.response.to.have.status(201);
+        const data = pm.response.json().data;
+        pm.expect(data.accessToken).to.be.a('string').and.not.empty;
+        pm.expect(data.user.id).to.be.a('string').and.not.empty;
+        pm.environment.set('token', data.accessToken);
+        pm.environment.set('userId', data.user.id);
+      });

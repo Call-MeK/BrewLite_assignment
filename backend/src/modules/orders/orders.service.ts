@@ -360,10 +360,10 @@ export class OrdersService {
   async transition(
     orderId: string,
     toStatus: OrderStatus,
+    tx: Prisma.TransactionClient,
     changedBy = 'system',
     reason?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id: orderId } });
       if (!order) {
         throw new NotFoundException('Không tìm thấy đơn hàng');
@@ -399,16 +399,16 @@ export class OrdersService {
             where: { id: order.userId },
             data: { loyaltyPoints: { increment: points } },
           });
-          await tx.loyaltyTransaction.create({
-            data: {
-              userId: order.userId,
-              orderId: order.id,
-              points,
-              type: LoyaltyTransactionType.EARNED,
-              reason: 'Points earned from paid order',
-            },
-          });
         }
+        await tx.loyaltyTransaction.create({
+          data: {
+            userId: order.userId,
+            orderId: order.id,
+            points,
+            type: LoyaltyTransactionType.EARNED,
+            reason: 'Points earned from paid order',
+          },
+        });
       }
 
       await tx.orderStatusHistory.create({
@@ -425,7 +425,6 @@ export class OrdersService {
         where: { id: order.id },
         select: { id: true, orderNumber: true, status: true },
       });
-    });
   }
 
   async getOrderHistory(userId: string, query: OrderHistoryQueryDto) {

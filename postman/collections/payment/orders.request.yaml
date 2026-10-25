@@ -1,0 +1,26 @@
+$kind: http-request
+url: '{{baseUrl}}/orders'
+method: POST
+order: 6000
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "items": [{ "productId": "{{productId}}", "size": "M", "quantity": 1 }]
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Order is pending and has an ID', function () {
+        pm.response.to.have.status(201);
+        const order = pm.response.json().data;
+        pm.expect(order.status).to.eql('PENDING');
+        pm.expect(order.id).to.be.a('string').and.not.empty;
+        pm.environment.set('orderId', order.id);
+      });

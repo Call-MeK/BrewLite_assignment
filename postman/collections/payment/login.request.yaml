@@ -1,4 +1,24 @@
 $kind: http-request
-url: ""
-method: GET
-order: 1000
+url: '{{baseUrl}}/auth/login'
+method: POST
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{testEmail}}",
+      "password": "test123456"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Login returns a JWT', function () {
+        pm.response.to.have.status(200);
+        const token = pm.response.json().data.accessToken;
+        pm.expect(token).to.be.a('string').and.not.empty;
+        pm.environment.set('token', token);
+      });
