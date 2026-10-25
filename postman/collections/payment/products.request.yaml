@@ -1,0 +1,20 @@
+$kind: http-request
+url: '{{baseUrl}}/products'
+method: GET
+order: 4000
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.environment.unset('productId');
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Menu contains a sellable product with size M', function () {
+        pm.response.to.have.status(200);
+        const products = pm.response.json().data;
+        pm.expect(products).to.be.an('array');
+        const product = products.find(p => p.sizePrices.some(size => size.size === 'M'));
+        pm.expect(product).to.exist;
+        pm.environment.set('productId', product.id);
+      });

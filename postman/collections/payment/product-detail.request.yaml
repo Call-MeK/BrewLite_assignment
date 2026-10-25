@@ -1,0 +1,16 @@
+$kind: http-request
+url: '{{baseUrl}}/products/{{productId}}'
+method: GET
+order: 5000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Product detail matches the menu selection', function () {
+        pm.response.to.have.status(200);
+        const product = pm.response.json().data;
+        pm.expect(product.id).to.eql(pm.environment.get('productId'));
+        pm.expect(product.toppings).to.be.an('array');
+        if (product.categorySlug === 'ca-phe') pm.expect(product.toppings).to.have.length(0);
+        else pm.expect(product.toppings.map(t => t.name)).to.have.members(['Vải', 'Đác thơm', 'Trân châu hoàng kim']);
+      });

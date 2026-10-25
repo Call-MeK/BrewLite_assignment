@@ -1,7 +1,31 @@
 const assert = require('node:assert/strict');
 const { test, mock } = require('node:test');
 const { Decimal } = require('@prisma/client/runtime/library');
+const { METHOD_METADATA, PATH_METADATA } = require('@nestjs/common/constants');
+const { ProductsController } = require('../src/modules/products/products.controller');
 const { ProductsService } = require('../src/modules/products/products.service');
+
+test('GET /products returns the public menu list', async () => {
+  const products = [{ id: 'coffee', name: 'Americano' }];
+  const getProducts = mock.fn(async () => products);
+  const controller = new ProductsController({ getProducts });
+
+  assert.deepEqual(await controller.findAll(), products);
+  assert.equal(getProducts.mock.callCount(), 1);
+  assert.equal(Reflect.getMetadata(PATH_METADATA, ProductsController.prototype.findAll), '/');
+  assert.equal(Reflect.getMetadata(METHOD_METADATA, ProductsController.prototype.findAll), 0);
+});
+
+test('GET /products/:id returns product detail for the requested id', async () => {
+  const product = { id: 'coffee', toppings: [] };
+  const getProductDetail = mock.fn(async () => product);
+  const controller = new ProductsController({ getProductDetail });
+
+  assert.deepEqual(await controller.findOne('coffee'), product);
+  assert.deepEqual(getProductDetail.mock.calls[0].arguments, ['coffee']);
+  assert.equal(Reflect.getMetadata(PATH_METADATA, ProductsController.prototype.findOne), ':id');
+  assert.equal(Reflect.getMetadata(METHOD_METADATA, ProductsController.prototype.findOne), 0);
+});
 
 test('getProducts selects the sellable menu and returns only public fields', async () => {
   const findMany = mock.fn(async () => [{
@@ -51,4 +75,30 @@ test('getProducts propagates database errors to the global exception filter', as
     product: { findMany: async () => { throw error; } },
   });
   await assert.rejects(service.getProducts(), error);
+});
+
+test('coffee has size only while other drinks offer the three supported toppings', async () => {
+  const findToppings = mock.fn(async () => [
+    { id: 'lychee', name: 'Vải', price: new Decimal(8000) },
+    { id: 'palm', name: 'Đác thơm', price: new Decimal(8000) },
+    { id: 'boba', name: 'Trân châu hoàng kim', price: new Decimal(5000) },
+  ]);
+  const product = {
+    id: 'drink', name: 'Drink', imageUrl: null, basePrice: new Decimal(30000),
+    isAvailable: true, stock: 10, sizePrices: [{ size: 'M', priceAdjustment: new Decimal(5000) }],
+    category: { slug: 'ca-phe' },
+  };
+  const service = new ProductsService({
+    product: { findUnique: async () => product },
+    topping: { findMany: findToppings },
+  });
+  const coffee = await service.getProductDetail('drink');
+  assert.equal(coffee.categorySlug, 'ca-phe');
+  assert.deepEqual(coffee.toppings, []);
+  assert.equal(findToppings.mock.callCount(), 0);
+
+  product.category.slug = 'tra-trai-cay';
+  const tea = await service.getProductDetail('drink');
+  assert.deepEqual(tea.toppings.map((item) => item.name), ['Vải', 'Đác thơm', 'Trân châu hoàng kim']);
+  assert.deepEqual(findToppings.mock.calls[0].arguments[0].where.name.in, ['Vải', 'Đác thơm', 'Trân châu hoàng kim']);
 });

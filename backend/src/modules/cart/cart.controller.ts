@@ -1,89 +1,43 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Body,
-  Param,
-  Delete,
-  HttpCode,
-} from "@nestjs/common";
-import { CartService } from "./cart.service";
-import { UpdateCartItemDto } from "./dto/update-cart-item.dto";
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtPayload } from '../auth/jwt.strategy';
+import { CartService } from './cart.service';
+import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 
-@Controller("cart")
+type AuthenticatedRequest = Request & { user: JwtPayload };
+
+@Controller('cart')
+@UseGuards(JwtAuthGuard)
 export class CartController {
-  // Tiêm CartService vào để Controller có thể sai việc
   constructor(private readonly cartService: CartService) {}
 
-  // 1. API Lấy chi tiết giỏ hàng (GET /api/v1/cart/{userId})
-  // Ghi chú: Tạm thời truyền userId qua URL để test. Sau này ghép Auth thì sẽ lấy từ Token.
-  @Get(":userId")
-  async getCart(@Param("userId") userId: string) {
-    const data = await this.cartService.getCartByUserId(userId);
-
-    // Trả về đúng chuẩn Success Response Format của nhóm
-    return {
-      success: true,
-      data: data,
-    };
+  @Get(':userId')
+  getCart(@Req() request: AuthenticatedRequest, @Param('userId') userId: string) {
+    if (userId !== request.user.sub) throw new ForbiddenException();
+    return this.cartService.getCartByUserId(userId);
   }
 
-  // 2. API Thêm món vào giỏ (POST /api/v1/cart/items)
-  @Post("items")
-  async addItem(
-    @Body()
-    body: {
-      cartId: string;
-      productId: string;
-      quantity: number;
-      size: any;
-    },
-  ) {
-    const data = await this.cartService.addItemToCart(
-      body.cartId,
-      body.productId,
-      body.quantity,
-      body.size,
-    );
-
-    return {
-      success: true,
-      message: "Đã thêm món vào giỏ hàng",
-      data: data,
-    };
+  @Post('items')
+  addItem(@Req() request: AuthenticatedRequest, @Body() body: AddCartItemDto) {
+    return this.cartService.addItemToCart(request.user.sub, body);
   }
 
-  // 3. API Cập nhật số lượng (PATCH /api/v1/cart/items/{id})
-  // Khớp 100% với Sequence Diagram lúc nãy
-  @Patch("items/:id")
-  @Patch("items/:id")
-  async updateItem(@Param("id") itemId: string, @Body() updateDto: any) {
-    const data = await this.cartService.updateItemDetails(itemId, updateDto);
-    return {
-      success: true,
-      message: "Đã cập nhật chi tiết món nước",
-      data,
-    };
+  @Patch('items/:id')
+  updateItem(@Req() request: AuthenticatedRequest, @Param('id') itemId: string, @Body() dto: UpdateCartItemDto) {
+    return this.cartService.updateItemDetails(request.user.sub, itemId, dto);
   }
-  @Delete("items/:id")
+
+  @Delete('items/:id')
   @HttpCode(200)
-  async removeItem(@Param("id") itemId: string) {
-    await this.cartService.removeItemFromCart(itemId);
-    return {
-      success: true,
-      message: "Đã xóa món hàng khỏi giỏ",
-    };
+  removeItem(@Req() request: AuthenticatedRequest, @Param('id') itemId: string) {
+    return this.cartService.removeItemFromCart(request.user.sub, itemId);
   }
 
-  @Delete(":cartId/clear")
+  @Delete(':cartId/clear')
   @HttpCode(200)
-  async clearCart(@Param("cartId") cartId: string) {
-    const data = await this.cartService.clearCart(cartId);
-    return {
-      success: true,
-      message: "Đã làm sạch toàn bộ giỏ hàng",
-      deletedCount: data.count,
-    };
+  clearCart(@Req() request: AuthenticatedRequest, @Param('cartId') cartId: string) {
+    return this.cartService.clearCart(request.user.sub, cartId);
   }
 }

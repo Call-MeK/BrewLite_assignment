@@ -1,113 +1,107 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
-import { UpdateCartItemDto } from "./dto/update-cart-item.dto";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ProductSize } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+
 @Injectable()
 export class CartService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // 2. HÀM TÌM GIỎ HÀNG CỦA USER
-  async getCartByUserId(userId: string) {
-    // Yêu cầu Prisma tìm giỏ hàng khớp với userId
-    let cart = await this.prisma.cart.findUnique({
-      where: { userId: userId },
-      include: {
-        items: true,
-      },
+  getCartByUserId(userId: string) {
+    return this.prisma.cart.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+      include: { items: true },
     });
-
-    // Nếu User chưa có giỏ hàng (lần đầu mua), hệ thống tự động tạo mới
-    if (!cart) {
-      cart = await this.prisma.cart.create({
-        data: { userId: userId },
-        include: { items: true },
-      });
-    }
-
-    return cart;
   }
-  // 3. THÊM MÓN VÀO GIỎ HÀNG
-  async addItemToCart(
-    cartId: string,
-    productId: string,
-    quantity: number,
-    size: any,
-  ) {
-    // Tìm xem món này (cùng loại, cùng size) đã có trong giỏ chưa
-    const existingItem = await this.prisma.cartItem.findFirst({
-      where: {
-        cartId: cartId,
-        productId: productId,
-        size: size,
-      },
-    });
 
-    if (existingItem) {
-      // Nếu có rồi -> Cộng dồn số lượng
-      return this.prisma.cartItem.update({
-        where: { id: existingItem.id },
-        data: { quantity: existingItem.quantity + quantity },
+  async addItemToCart(userId: string, dto: AddCartItemDto) {
+    await this.requireCart(dto.cartId, userId);
+    const toppingIds = [...(dto.toppingIds ?? [])].sort();
+    await this.requireSelection(dto.productId, dto.size, toppingIds);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM carts WHERE id = ${dto.cartId} FOR UPDATE`;
+      const existing = await tx.cartItem.findFirst({
+        where: { cartId: dto.cartId, productId: dto.productId, size: dto.size, toppingIds: { equals: toppingIds } },
       });
-    }
+      if (existing) {
+        if (existing.quantity + dto.quantity > 99) throw new BadRequestException('Số lượng tối đa là 99');
+        const updated = await tx.cartItem.updateMany({
+          where: {
+            id: existing.id,
+            productId: dto.productId,
+            size: dto.size,
+            toppingIds: { equals: toppingIds },
+            quantity: { lte: 99 - dto.quantity },
+          },
+          data: { quantity: { increment: dto.quantity } },
+        });
+        if (updated.count !== 1) throw new BadRequestException('Giỏ hàng vừa thay đổi hoặc vượt số lượng 99');
+        return tx.cartItem.findUnique({ where: { id: existing.id } });
+      }
+      return tx.cartItem.create({
+        data: { cartId: dto.cartId, productId: dto.productId, quantity: dto.quantity, size: dto.size, toppingIds },
+      });
+    });
+  }
 
-    // Nếu chưa có -> Tạo dòng mới trong giỏ
-    return this.prisma.cartItem.create({
+  async updateItemDetails(userId: string, itemId: string, dto: UpdateCartItemDto) {
+    const item = await this.requireItem(itemId, userId);
+    if (dto.size !== undefined || dto.toppingIds !== undefined) {
+      await this.requireSelection(item.productId, dto.size ?? item.size, dto.toppingIds ?? item.toppingIds);
+    }
+    return this.prisma.cartItem.update({
+      where: { id: itemId },
       data: {
-        cartId: cartId,
-        productId: productId,
-        quantity: quantity,
-        size: size,
+        ...(dto.quantity !== undefined ? { quantity: dto.quantity } : {}),
+        ...(dto.size !== undefined ? { size: dto.size } : {}),
+        ...(dto.toppingIds !== undefined ? { toppingIds: [...dto.toppingIds].sort() } : {}),
       },
     });
   }
 
-  // 4. CẬP NHẬT SỐ LƯỢNG (Khớp với Sequence Diagram)
-  async updateItemQuantity(itemId: string, updateDto: UpdateCartItemDto) {
-    // Kiểm tra xem record này có tồn tại không
+  async removeItemFromCart(userId: string, itemId: string) {
+    await this.requireItem(itemId, userId);
+    return this.prisma.cartItem.delete({ where: { id: itemId } });
+  }
+
+  async clearCart(userId: string, cartId: string) {
+    await this.requireCart(cartId, userId);
+    return this.prisma.cartItem.deleteMany({ where: { cartId } });
+  }
+
+  private async requireCart(cartId: string, userId: string) {
+    const cart = await this.prisma.cart.findUnique({ where: { id: cartId }, select: { userId: true } });
+    if (!cart) throw new NotFoundException('Không tìm thấy giỏ hàng');
+    if (cart.userId !== userId) throw new ForbiddenException();
+  }
+
+  private async requireItem(itemId: string, userId: string) {
     const item = await this.prisma.cartItem.findUnique({
       where: { id: itemId },
+      include: { cart: { select: { userId: true } } },
     });
-
-    if (!item) {
-      throw new NotFoundException("Không tìm thấy món hàng này trong giỏ");
-    }
-
-    // Ra lệnh cho Prisma cập nhật
-    return this.prisma.cartItem.update({
-      where: { id: itemId },
-      data: {
-        quantity: updateDto.quantity,
-        ...(updateDto.size && { size: updateDto.size }), // Kỹ thuật rải object: Nếu có gửi size lên thì mới update size
-      },
-    });
+    if (!item) throw new NotFoundException('Không tìm thấy món hàng trong giỏ');
+    if (item.cart.userId !== userId) throw new ForbiddenException();
+    return item;
   }
-  // xóa theo ID
-  async removeItemFromCart(itemId: string) {
-    try {
-      return await this.prisma.cartItem.delete({
-        where: { id: itemId },
+
+  private async requireSelection(productId: string, size: ProductSize, toppingIds: string[]) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { isAvailable: true, stock: true, sizePrices: { where: { size }, select: { id: true } } },
+    });
+    if (!product?.isAvailable || product.stock < 1 || product.sizePrices.length === 0) {
+      throw new BadRequestException('Sản phẩm hoặc kích cỡ không khả dụng');
+    }
+    if (toppingIds.length > 0) {
+      const count = await this.prisma.topping.count({
+        where: { id: { in: toppingIds }, isAvailable: true, stock: { gt: 0 } },
       });
-    } catch (error) {
-      throw new NotFoundException("Không tìm thấy món hàng này trong giỏ");
+      if (count !== toppingIds.length) throw new BadRequestException('Topping không khả dụng');
     }
-  }
-
-  async clearCart(cartId: string) {
-    return this.prisma.cartItem.deleteMany({
-      where: { cartId: cartId },
-    });
-  }
-  async updateItemDetails(itemId: string, updateDto: any) {
-    return this.prisma.cartItem.update({
-      where: { id: itemId },
-      data: {
-        ...(updateDto.quantity !== undefined && {
-          quantity: updateDto.quantity,
-        }),
-        ...(updateDto.size !== undefined && { size: updateDto.size }),
-        ...(updateDto.toppingIds !== undefined && {
-          toppingIds: updateDto.toppingIds,
-        }),
-      },
-    });
   }
 }
