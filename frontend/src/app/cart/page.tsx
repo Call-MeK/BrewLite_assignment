@@ -64,7 +64,7 @@ export default function CartPage() {
           <div className="mt-4 flex justify-between text-sm text-content-secondary"><span>Số loại món</span><span>{items.length}</span></div>
           <div className="mt-3 flex justify-between gap-3 border-t border-border-light pt-4"><span className="font-semibold text-navy">Tạm tính</span><span className="text-xl font-black text-primary">{money(total)}</span></div>
           <p className="mt-4 text-xs leading-5 text-content-secondary">Kiểm tra lại món và số lượng trước khi tiếp tục. Bạn sẽ dùng điểm tích lũy ở bước sau.</p>
-          <button type="button" onClick={() => router.push('/checkout')} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 font-bold text-white hover:bg-primary-hover">
+          <button type="button" onClick={() => router.push(localStorage.getItem('token') ? '/checkout' : '/login?next=%2Fcheckout')} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 font-bold text-white hover:bg-primary-hover">
             Tiến hành thanh toán
           </button>
           <Link href="/menu" className="mt-3 flex min-h-11 items-center justify-center font-semibold text-primary hover:underline">Chọn thêm món</Link>

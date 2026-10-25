@@ -30,7 +30,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
 
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get('next');
-    if (next === '/cart' || next === '/orders') setReturnPath(next);
+    if (next === '/cart' || next === '/checkout' || next === '/orders') setReturnPath(next);
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
