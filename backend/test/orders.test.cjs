@@ -94,6 +94,88 @@ test('create calculates prices on the server and reserves product and topping st
   assert.equal(tx.topping.updateMany.mock.calls[0].arguments[0].where.stock.gte, 2);
 });
 
+test('create redeems 20 points for 2000 VND using an atomic balance check', async () => {
+  const updatePoints = mock.fn(async () => ({ count: 1 }));
+  const spent = mock.fn(async () => ({}));
+  const createOrder = mock.fn(async ({ data }) => ({
+    ...data, id: 'order-1', orderNumber: 1, userId: 'user-1',
+    items: [], statusHistory: [],
+  }));
+  const tx = {
+    product: {
+      findMany: async () => [{ id: 'coffee', name: 'Coffee', basePrice: 30000, version: 1, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }] }],
+      updateMany: async () => ({ count: 1 }),
+    },
+    user: { updateMany: updatePoints },
+    loyaltyTransaction: { create: spent },
+    order: { create: createOrder },
+  };
+  const service = new OrdersService({ $transaction: (callback) => callback(tx) });
+  const order = await service.create('user-1', { items: [{ productId: 'coffee', quantity: 1 }], pointsToUse: 20 });
+
+  assert.equal(createOrder.mock.calls[0].arguments[0].data.totalAmount, 30000);
+  assert.equal(createOrder.mock.calls[0].arguments[0].data.finalAmount, 28000);
+  assert.deepEqual(updatePoints.mock.calls[0].arguments[0], {
+    where: { id: 'user-1', loyaltyPoints: { gte: 20 } },
+    data: { loyaltyPoints: { decrement: 20 } },
+  });
+  assert.equal(spent.mock.calls[0].arguments[0].data.type, 'SPENT');
+  assert.equal(spent.mock.calls[0].arguments[0].data.points, 20);
+  assert.equal(order.pointsRedeemed, 20);
+  assert.equal(order.pointsDiscountAmount, 2000);
+});
+
+test('create rejects invalid or unaffordable point redemption', async () => {
+  const tx = {
+    product: {
+      findMany: async () => [{ id: 'coffee', name: 'Coffee', basePrice: 1000, version: 1, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }] }],
+      updateMany: async () => ({ count: 1 }),
+    },
+    user: { updateMany: mock.fn(async () => ({ count: 0 })) },
+    order: { create: mock.fn(async () => ({})) },
+  };
+  const service = new OrdersService({ $transaction: (callback) => callback(tx) });
+  const items = [{ productId: 'coffee', quantity: 1 }];
+  await assert.rejects(service.create('user-1', { items, pointsToUse: 15 }), { status: 400 });
+  await assert.rejects(service.create('user-1', { items, pointsToUse: 20 }), { status: 400 });
+  await assert.rejects(service.create('user-1', { items, pointsToUse: 10 }), { status: 400 });
+  assert.equal(tx.order.create.mock.callCount(), 0);
+});
+
+test('create rejects toppings on coffee even when the topping exists', async () => {
+  const createOrder = mock.fn(async () => ({}));
+  const tx = {
+    product: { findMany: async () => [{
+      id: 'coffee', name: 'Coffee', basePrice: 30000, stock: 10, version: 1,
+      category: { slug: 'ca-phe' }, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }],
+    }] },
+    topping: { findMany: async () => [{ id: 'lychee', name: 'Vải', price: 8000, stock: 10 }] },
+    order: { create: createOrder },
+  };
+  const service = new OrdersService({ $transaction: (callback) => callback(tx) });
+  await assert.rejects(service.create('user-1', { items: [{ productId: 'coffee', quantity: 1, toppingIds: ['lychee'] }] }), { status: 400 });
+  assert.equal(createOrder.mock.callCount(), 0);
+});
+
+test('cancel refunds redeemed points once with the order transition', async () => {
+  const restorePoints = mock.fn(async () => ({}));
+  const refunded = mock.fn(async () => ({}));
+  const tx = {
+    order: {
+      findFirst: async () => ({ id: 'order-1', orderNumber: 1, status: OrderStatus.PENDING, version: 0, items: [], loyaltyTransactions: [{ points: 20 }] }),
+      updateMany: async () => ({ count: 1 }),
+    },
+    user: { update: restorePoints },
+    loyaltyTransaction: { create: refunded },
+    orderStatusHistory: { create: async () => ({}) },
+  };
+  const service = new OrdersService({ $transaction: (callback) => callback(tx) });
+  await service.cancel('order-1', 'user-1');
+  assert.deepEqual(restorePoints.mock.calls[0].arguments[0].data, { loyaltyPoints: { increment: 20 } });
+  assert.equal(refunded.mock.calls[0].arguments[0].data.type, 'REFUNDED');
+  assert.equal(refunded.mock.calls[0].arguments[0].data.points, 20);
+});
+
 test('history scopes every query to the authenticated user and returns pagination metadata', async () => {
   const order = {
     id: 'order-1',
@@ -138,4 +220,20 @@ test('order detail hides orders that do not belong to the authenticated user', a
     service.getOrderDetail('other-user-order', 'user-1'),
     NotFoundException,
   );
+});
+
+test('order detail reports redeemed points separately from promotion discount', async () => {
+  const service = new OrdersService({
+    order: { findFirst: async () => ({
+      id: 'order-1', orderNumber: 1, status: OrderStatus.PENDING,
+      totalAmount: 30000, discountAmount: 3000, finalAmount: 25000,
+      createdAt: new Date(), items: [], loyaltyTransactions: [{ points: 20 }],
+    }) },
+  });
+
+  const order = await service.getOrderDetail('order-1', 'user-1');
+  assert.equal(order.discountAmount, 3000);
+  assert.equal(order.pointsRedeemed, 20);
+  assert.equal(order.pointsDiscountAmount, 2000);
+  assert.equal(order.finalAmount, 25000);
 });

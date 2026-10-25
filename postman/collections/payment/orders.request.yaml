@@ -11,7 +11,8 @@ body:
   type: json
   content: |-
     {
-      "items": [{ "productId": "{{productId}}", "size": "M", "quantity": 1 }]
+      "items": [{ "productId": "{{productId}}", "size": "M", "quantity": 1 }],
+      "pointsToUse": 0
     }
 scripts:
   - type: beforeRequest
@@ -28,6 +29,7 @@ scripts:
         const order = pm.response.json().data;
         pm.expect(order.status).to.eql('PENDING');
         pm.expect(order.id).to.be.a('string').and.not.empty;
+        pm.expect(order.pointsRedeemed).to.eql(0);
         pm.environment.set('orderId', order.id);
         pm.collectionVariables.set('latestOrderId', order.id);
       });

@@ -1,16 +1,12 @@
 $kind: http-request
-url: '{{baseUrl}}/payments'
+url: "{{baseUrl}}/payments"
 method: POST
 order: 7000
 headers:
-  - key: Authorization
-    value: 'Bearer {{token}}'
-  - key: Content-Type
-    value: application/json
-  - key: Idempotency-Key
-    value: '{{idempotencyKey}}'
-  - key: X-Mock-Outcome
-    value: SUCCESS
+  Authorization: Bearer {{token}}
+  Content-Type: application/json
+  Idempotency-Key: "{{idempotencyKey}}"
+  X-Mock-Outcome: SUCCESS
 body:
   type: json
   content: |-
@@ -20,14 +16,13 @@ body:
     }
 scripts:
   - type: beforeRequest
-    language: text/javascript
     code: |-
       for (const key of ['token', 'idempotencyKey']) {
         if (!pm.environment.get(key)) throw new Error('Thiếu ' + key + ': chạy Register/Login trước Payment trong cùng environment.');
       }
       if (!pm.collectionVariables.get('latestOrderId')) throw new Error('Thiếu đơn hàng mới: chạy request Orders trong cùng collection trước Payment.');
-  - type: afterResponse
     language: text/javascript
+  - type: afterResponse
     code: |-
       pm.test('Payment belongs to the current order', function () {
         const body = pm.response.json();
@@ -37,3 +32,4 @@ scripts:
         pm.expect(payment.orderId).to.eql(pm.collectionVariables.get('latestOrderId'));
         pm.expect(payment.status).to.eql('SUCCESS');
       });
+    language: text/javascript

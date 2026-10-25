@@ -76,3 +76,29 @@ test('getProducts propagates database errors to the global exception filter', as
   });
   await assert.rejects(service.getProducts(), error);
 });
+
+test('coffee has size only while other drinks offer the three supported toppings', async () => {
+  const findToppings = mock.fn(async () => [
+    { id: 'lychee', name: 'Vải', price: new Decimal(8000) },
+    { id: 'palm', name: 'Đác thơm', price: new Decimal(8000) },
+    { id: 'boba', name: 'Trân châu hoàng kim', price: new Decimal(5000) },
+  ]);
+  const product = {
+    id: 'drink', name: 'Drink', imageUrl: null, basePrice: new Decimal(30000),
+    isAvailable: true, stock: 10, sizePrices: [{ size: 'M', priceAdjustment: new Decimal(5000) }],
+    category: { slug: 'ca-phe' },
+  };
+  const service = new ProductsService({
+    product: { findUnique: async () => product },
+    topping: { findMany: findToppings },
+  });
+  const coffee = await service.getProductDetail('drink');
+  assert.equal(coffee.categorySlug, 'ca-phe');
+  assert.deepEqual(coffee.toppings, []);
+  assert.equal(findToppings.mock.callCount(), 0);
+
+  product.category.slug = 'tra-trai-cay';
+  const tea = await service.getProductDetail('drink');
+  assert.deepEqual(tea.toppings.map((item) => item.name), ['Vải', 'Đác thơm', 'Trân châu hoàng kim']);
+  assert.deepEqual(findToppings.mock.calls[0].arguments[0].where.name.in, ['Vải', 'Đác thơm', 'Trân châu hoàng kim']);
+});

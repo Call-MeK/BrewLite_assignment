@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, Coffee, Minus, Plus, RefreshCw, ShoppingBag } from 'lucide-react';
 import { ApiError } from '@/lib/api-client';
+import { addOrMergeCartItem } from '@/lib/cart-items';
 import { getProductById } from '@/services/product.service';
 import type { CartItemDraft, ProductDetail, ProductSize } from '@/types/product';
 
@@ -27,7 +28,6 @@ function isValidProduct(value: ProductDetail): boolean {
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const id = params.id;
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,21 +98,13 @@ export default function ProductDetailPage() {
       };
       const saved = localStorage.getItem('brewlite-cart');
       const items: CartItemDraft[] = saved ? JSON.parse(saved) : [];
-      if (!Array.isArray(items)) throw new Error('Dữ liệu giỏ hàng không hợp lệ.');
-      const existingIndex = items.findIndex((item) =>
-        item.productId === newItem.productId &&
-        item.size === newItem.size &&
-        [...item.toppingIds].sort().join(',') === [...newItem.toppingIds].sort().join(','),
-      );
-      if (existingIndex >= 0) {
-        items[existingIndex] = { ...items[existingIndex], quantity: Math.min(99, items[existingIndex].quantity + quantity) };
-      } else {
-        items.push(newItem);
-      }
-      localStorage.setItem('brewlite-cart', JSON.stringify(items));
-      router.push('/cart');
-    } catch {
-      setNotice('Không thể thêm món vào giỏ hàng. Vui lòng thử lại.');
+      if (!Array.isArray(items)) throw new Error('Danh sách món đã chọn không hợp lệ.');
+      localStorage.setItem('brewlite-cart', JSON.stringify(addOrMergeCartItem(items, newItem)));
+      window.dispatchEvent(new Event('cart-changed'));
+      setNotice(`Đã thêm ${product.name}. Mở biểu tượng túi món ở đầu trang để xem.`);
+      setAdding(false);
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : 'Không thể thêm món. Vui lòng thử lại.');
       setAdding(false);
     }
   }
@@ -142,9 +134,9 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="flex flex-col p-6 sm:p-8 lg:p-10">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">BrewLite · Product detail</p>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">BrewLite · Chi tiết sản phẩm</p>
         <h1 className="mt-3 text-3xl font-black leading-tight text-navy">{product.name}</h1>
-        <p className="mt-3 text-sm leading-6 text-content-secondary">Tùy chỉnh kích cỡ và topping để tạo nên ly đồ uống theo sở thích của bạn.</p>
+        <p className="mt-3 text-sm leading-6 text-content-secondary">{product.categorySlug === 'ca-phe' ? 'Chọn size cà phê theo sở thích của bạn.' : 'Tùy chỉnh size và topping để tạo nên ly đồ uống theo sở thích của bạn.'}</p>
         <div className="mt-5 border-b border-border-light pb-5">
           <p className="text-sm text-content-secondary">Giá gốc</p>
           <p className="mt-1 text-2xl font-black text-primary">{money(product.basePrice)}</p>
@@ -164,7 +156,7 @@ export default function ProductDetailPage() {
             </div>}
         </fieldset>
 
-        <fieldset disabled={!product.isAvailable} className="mt-7">
+        {product.categorySlug !== 'ca-phe' && <fieldset disabled={!product.isAvailable} className="mt-7">
           <legend className="mb-1 font-bold text-navy">2. Thêm topping <span className="text-xs font-normal text-content-secondary">(tối đa 3)</span></legend>
           <p className="mb-3 text-xs text-content-secondary">Chọn thêm để ly nước hợp khẩu vị hơn.</p>
           {product.toppings.length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-content-secondary">Hiện chưa có topping khả dụng.</p> :
@@ -172,31 +164,31 @@ export default function ProductDetailPage() {
               {product.toppings.map((item) => {
                 const active = selectedToppings.includes(item.id);
                 return <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${active ? 'border-primary bg-primary/5' : 'border-border-light hover:border-primary/40'}`}>
-                  <input type="checkbox" checked={active} onChange={() => toggleTopping(item.id)} disabled={!active && selectedToppings.length >= 3} className="h-4 w-4 accent-[#287b87]" />
+                  <input type="checkbox" checked={active} onChange={() => toggleTopping(item.id)} disabled={!active && selectedToppings.length >= 3} className="h-4 w-4 accent-primary" />
                   <span className="flex-1 text-sm font-semibold text-navy">{item.name}</span>
                   <span className="text-sm font-semibold text-content-secondary">+{money(item.price)}</span>
                 </label>;
               })}
             </div>}
-        </fieldset>
+        </fieldset>}
 
         <div className="mt-7 flex items-center justify-between rounded-2xl bg-surface-secondary p-4">
           <div><p className="text-sm font-semibold text-content-secondary">Số lượng</p><p className="mt-1 text-xs text-content-secondary">Từ 1 đến 99 ly</p></div>
           <div className="flex items-center gap-4">
-            <button aria-label="Giảm số lượng" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1} className="rounded-lg border border-border-light bg-white p-2 disabled:opacity-40"><Minus size={16} /></button>
+            <button aria-label="Giảm số lượng" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1} className="flex h-11 w-11 items-center justify-center rounded-lg border border-border-light bg-white disabled:opacity-40"><Minus size={16} /></button>
             <span className="min-w-5 text-center font-bold text-navy">{quantity}</span>
-            <button aria-label="Tăng số lượng" onClick={() => setQuantity((q) => Math.min(99, q + 1))} disabled={quantity >= 99} className="rounded-lg border border-border-light bg-white p-2 disabled:opacity-40"><Plus size={16} /></button>
+            <button aria-label="Tăng số lượng" onClick={() => setQuantity((q) => Math.min(99, q + 1))} disabled={quantity >= 99} className="flex h-11 w-11 items-center justify-center rounded-lg border border-border-light bg-white disabled:opacity-40"><Plus size={16} /></button>
           </div>
         </div>
 
-        {notice && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{notice}</p>}
+        {notice && <p role="status" className="mt-4 rounded-xl bg-primary-light p-3 text-sm text-primary">{notice}</p>}
         <div className="mt-6 border-t border-border-light pt-5">
           <div className="flex items-end justify-between gap-3">
             <div><p className="text-sm text-content-secondary">Giá ước tính / ly</p><p className="mt-1 text-2xl font-black text-navy">{estimatedPrice === null ? '—' : money(estimatedPrice)}</p></div>
             <div className="text-right"><p className="text-sm text-content-secondary">Tạm tính</p><p className="mt-1 text-lg font-bold text-primary">{estimatedPrice === null ? '—' : money(estimatedPrice * quantity)}</p></div>
           </div>
           <button onClick={addToCart} disabled={!product.isAvailable || !selectedSize || estimatedPrice === null || adding} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 font-bold text-white shadow-md shadow-primary/20 transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
-            <ShoppingBag size={19} />{!product.isAvailable ? 'Sản phẩm hiện hết hàng' : adding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
+            <ShoppingBag size={19} />{!product.isAvailable ? 'Sản phẩm hiện hết hàng' : adding ? 'Đang thêm...' : 'Thêm món đã chọn'}
           </button>
           <p className="mt-3 text-center text-xs leading-5 text-content-secondary">Giá trên trang là giá ước tính. Giá cuối cùng sẽ được hệ thống xác nhận khi đặt hàng.</p>
         </div>

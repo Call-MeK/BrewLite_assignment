@@ -17,7 +17,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node -r dotenv/config prisma/seed.ts"
+    "prisma:seed": "ts-node -r dotenv/config prisma/seed.ts",
+    "menu:add": "ts-node -r dotenv/config prisma/add-menu-items.ts",
+    "toppings:add": "ts-node -r dotenv/config prisma/add-toppings.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

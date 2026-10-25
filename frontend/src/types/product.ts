@@ -14,6 +14,7 @@ export interface ProductTopping {
 export interface ProductDetail {
   id: string;
   name: string;
+  categorySlug: string | null;
   imageUrl: string | null;
   basePrice: number;
   currency: 'VND' | string;

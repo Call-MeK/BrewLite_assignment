@@ -11,4 +11,6 @@ scripts:
         const product = pm.response.json().data;
         pm.expect(product.id).to.eql(pm.environment.get('productId'));
         pm.expect(product.toppings).to.be.an('array');
+        if (product.categorySlug === 'ca-phe') pm.expect(product.toppings).to.have.length(0);
+        else pm.expect(product.toppings.map(t => t.name)).to.have.members(['Vải', 'Đác thơm', 'Trân châu hoàng kim']);
       });

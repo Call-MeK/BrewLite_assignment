@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const publicUserSelect = {
   id: true,
@@ -91,6 +92,37 @@ export class AuthService {
       throw new UnauthorizedException('Tài khoản không còn tồn tại');
     }
     return user;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const email = dto.email.trim().toLowerCase();
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId }, select: { email: true, passwordHash: true },
+    });
+    if (!current) throw new UnauthorizedException('Tài khoản không còn tồn tại');
+    if (email !== current.email) {
+      if (!dto.currentPassword) throw new BadRequestException('Cần mật khẩu hiện tại để đổi email');
+      this.assertPasswordLength(dto.currentPassword);
+      if (!(await bcrypt.compare(dto.currentPassword, current.passwordHash))) {
+        throw new UnauthorizedException('Mật khẩu hiện tại không chính xác');
+      }
+    }
+    try {
+      const { tokenVersion, ...user } = await this.prisma.user.update({
+        where: { id: userId, email: current.email, passwordHash: current.passwordHash },
+        data: { email, fullName: dto.fullName.trim() },
+        select: { ...publicUserSelect, tokenVersion: true },
+      });
+      return this.createSession(user, tokenVersion);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Email này đã được sử dụng');
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new UnauthorizedException('Tài khoản không còn tồn tại');
+      }
+      throw error;
+    }
   }
 
   private async createSession(user: PublicUser, tokenVersion: number) {

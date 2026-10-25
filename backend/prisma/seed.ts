@@ -1,5 +1,6 @@
 import { PrismaClient, ProductSize } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { additionalMenuItems } from './additional-menu-items';
 
 const prisma = new PrismaClient();
 
@@ -53,7 +54,7 @@ async function main() {
   // 4. Tạo Toppings
   const toppingBoba = await prisma.topping.create({
     data: {
-      name: 'Trân châu trắng',
+      name: 'Trân châu hoàng kim',
       price: 5000,
       stock: 200,
     },
@@ -61,20 +62,20 @@ async function main() {
 
   const toppingCheese = await prisma.topping.create({
     data: {
-      name: 'Kem Cheese',
-      price: 10000,
+      name: 'Vải',
+      price: 8000,
       stock: 150,
     },
   });
 
   const toppingPeach = await prisma.topping.create({
     data: {
-      name: 'Đào miếng',
+      name: 'Đác thơm',
       price: 8000,
       stock: 100,
     },
   });
-  console.log('✅ Đã tạo 3 Topping: Trân châu trắng (5k), Kem Cheese (10k), Đào miếng (8k)');
+  console.log('✅ Đã tạo 3 topping: Trân châu hoàng kim (5k), Vải (8k), Đác thơm (8k)');
 
   // 5. Tạo Sản phẩm kèm giá Size phụ thu (S: 0, M: +5k, L: +10k)
   const productsData = [
@@ -106,6 +107,10 @@ async function main() {
       imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600',
       stock: 75,
     },
+    ...additionalMenuItems.map(({ categorySlug, ...item }) => ({
+      ...item,
+      categoryId: categorySlug === 'ca-phe' ? catCoffee.id : catTea.id,
+    })),
   ];
 
   for (const item of productsData) {

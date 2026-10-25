@@ -31,6 +31,10 @@ export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateOrderDto) {
+    const pointsToUse = dto.pointsToUse ?? 0;
+    if (!Number.isSafeInteger(pointsToUse) || pointsToUse < 0 || pointsToUse % 10 !== 0) {
+      throw new BadRequestException('Điểm sử dụng phải là bội số của 10');
+    }
     try {
       return await this.prisma.$transaction(
         async (tx) => {
@@ -41,11 +45,11 @@ export class OrdersService {
           const [products, toppings] = await Promise.all([
             tx.product.findMany({
               where: { id: { in: productIds }, isAvailable: true },
-              include: { sizePrices: true },
+              include: { sizePrices: true, category: { select: { slug: true } } },
             }),
             toppingIds.length
               ? tx.topping.findMany({
-                  where: { id: { in: toppingIds }, isAvailable: true },
+                  where: { id: { in: toppingIds }, isAvailable: true, name: { in: ['Vải', 'Đác thơm', 'Trân châu hoàng kim'] } },
                 })
               : Promise.resolve([]),
           ]);
@@ -74,6 +78,9 @@ export class OrdersService {
           const orderItems = dto.items.map((item) => {
             const size = item.size ?? ProductSize.M;
             const product = productsById.get(item.productId)!;
+            if (product.category?.slug === 'ca-phe' && item.toppingIds?.length) {
+              throw new BadRequestException('Cà phê chỉ được chọn size, không dùng topping');
+            }
             const sizePrice = product.sizePrices.find(
               (price) => price.size === size,
             );
@@ -194,7 +201,21 @@ export class OrdersService {
             discountAmount = Math.min(totalAmount, discountAmount);
           }
 
-          const finalAmount = Math.max(0, totalAmount - discountAmount);
+          const amountAfterPromotion = totalAmount - discountAmount;
+          const pointsDiscountAmount = pointsToUse * 100;
+          if (pointsDiscountAmount > amountAfterPromotion) {
+            throw new BadRequestException('Điểm sử dụng vượt quá số tiền cần thanh toán');
+          }
+          if (pointsToUse > 0) {
+            const redeemed = await tx.user.updateMany({
+              where: { id: userId, loyaltyPoints: { gte: pointsToUse } },
+              data: { loyaltyPoints: { decrement: pointsToUse } },
+            });
+            if (redeemed.count !== 1) {
+              throw new BadRequestException('Không đủ điểm tích lũy để sử dụng');
+            }
+          }
+          const finalAmount = amountAfterPromotion - pointsDiscountAmount;
           const order = await tx.order.create({
             data: {
               userId,
@@ -234,6 +255,16 @@ export class OrdersService {
             },
           });
 
+          if (pointsToUse > 0) {
+            await tx.loyaltyTransaction.create({
+              data: {
+                userId, orderId: order.id, points: pointsToUse,
+                type: LoyaltyTransactionType.SPENT,
+                reason: 'Points redeemed for order discount',
+              },
+            });
+          }
+
           return {
             id: order.id,
             orderNumber: order.orderNumber,
@@ -241,6 +272,8 @@ export class OrdersService {
             status: order.status,
             totalAmount: Number(order.totalAmount),
             discountAmount: Number(order.discountAmount),
+            pointsRedeemed: pointsToUse,
+            pointsDiscountAmount,
             finalAmount: Number(order.finalAmount),
             items: order.items.map((item) => ({
               productId: item.productId,
@@ -275,6 +308,7 @@ export class OrdersService {
         const order = await tx.order.findFirst({
           where: { id: orderId, userId },
           include: {
+            loyaltyTransactions: { where: { type: LoyaltyTransactionType.SPENT }, select: { points: true } },
             items: {
               include: { toppings: { select: { toppingId: true } } },
             },
@@ -335,6 +369,21 @@ export class OrdersService {
               );
             }
           }
+        }
+
+        const pointsRedeemed = order.loyaltyTransactions.reduce((sum, item) => sum + item.points, 0);
+        if (pointsRedeemed > 0) {
+          await tx.user.update({
+            where: { id: userId },
+            data: { loyaltyPoints: { increment: pointsRedeemed } },
+          });
+          await tx.loyaltyTransaction.create({
+            data: {
+              userId, orderId: order.id, points: pointsRedeemed,
+              type: LoyaltyTransactionType.REFUNDED,
+              reason: 'Points refunded after order cancellation',
+            },
+          });
         }
 
         await tx.orderStatusHistory.create({
@@ -470,6 +519,7 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
       include: {
+        loyaltyTransactions: { where: { type: LoyaltyTransactionType.SPENT }, select: { points: true } },
         items: {
           include: {
             product: { select: { name: true } },
@@ -484,12 +534,16 @@ export class OrdersService {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
 
+    const pointsRedeemed = order.loyaltyTransactions.reduce((sum, item) => sum + item.points, 0);
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
       totalAmount: Number(order.totalAmount),
       discountAmount: Number(order.discountAmount),
+      pointsRedeemed,
+      pointsDiscountAmount: pointsRedeemed * 100,
       finalAmount: Number(order.finalAmount),
       createdAt: order.createdAt,
       items: order.items.map((item) => ({

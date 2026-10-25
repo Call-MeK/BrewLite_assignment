@@ -1,0 +1,30 @@
+# When changing email, include currentPassword in the JSON body.
+$kind: http-request
+url: '{{baseUrl}}/auth/me'
+method: PUT
+order: 3500
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{testEmail}}",
+      "fullName": "BrewLite Customer"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Profile update returns safe user data and a fresh JWT', function () {
+        pm.response.to.have.status(200);
+        const result = pm.response.json().data;
+        pm.expect(result.user.email).to.eql(pm.environment.get('testEmail'));
+        pm.expect(result.user.fullName).to.eql('BrewLite Customer');
+        pm.expect(result.user).not.to.have.property('passwordHash');
+        pm.expect(result.accessToken).to.be.a('string').and.not.empty;
+        pm.environment.set('token', result.accessToken);
+      });
