@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { ApiError } from '@/lib/api-client';
+import { clearPendingOrder } from '@/lib/pending-order';
 import { cancelOrder, getOrder, orderStatusLabel, type OrderDetail } from '@/services/order.service';
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
@@ -46,6 +47,7 @@ export default function OrderDetailPage() {
     try {
       const result = await cancelOrder(order.id);
       setOrder((current) => current ? { ...current, status: result.status } : current);
+      if (result.status === 'CANCELLED') clearPendingOrder(localStorage, order.id);
       setMessage('Đã hủy đơn hàng.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Không thể hủy đơn hàng.');

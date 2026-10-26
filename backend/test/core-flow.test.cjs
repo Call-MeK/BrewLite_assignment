@@ -71,6 +71,17 @@ test('registration, order, cancellation and password change work through HTTP an
   assert.equal((await request(`/orders/${orderId}/cancel`, 'POST', undefined, oldToken)).body.data.status, 'CANCELLED');
   assert.equal(await prisma.product.findUnique({ where: { id: productId } }).then((p) => p.stock), 2);
 
+  await prisma.product.update({ where: { id: productId }, data: { stock: 1 } });
+  const beforeOrders = await prisma.order.count({ where: { userId } });
+  const concurrent = await Promise.all([
+    request('/orders', 'POST', { items: [{ productId, size: 'M', quantity: 1 }] }, oldToken),
+    request('/orders', 'POST', { items: [{ productId, size: 'M', quantity: 1 }] }, oldToken),
+  ]);
+  assert.equal(concurrent.filter((result) => result.code === 201).length, 1);
+  assert.equal(concurrent.filter((result) => result.code === 400 || result.code === 409).length, 1);
+  assert.equal(await prisma.order.count({ where: { userId } }), beforeOrders + 1);
+  assert.equal(await prisma.product.findUnique({ where: { id: productId } }).then((p) => p.stock), 0);
+
   assert.equal((await request('/auth/login', 'POST', { email, password })).code, 200);
   const changed = await request('/auth/change-password', 'POST', { currentPassword: password, newPassword: 'second-password' }, oldToken);
   assert.equal(changed.code, 200);

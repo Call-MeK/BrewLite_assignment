@@ -10,7 +10,3 @@ values:
     value: ''
   - key: userId
     value: ''
-  - key: productId
-    value: ''
-  - key: orderId
-    value: ''

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, CreditCard, QrCode, Wallet, XCircle } from 'lucide-react';
+import { finishPaidPendingOrder } from '@/lib/pending-order';
 import { getOrder, payOrder, type OrderDetail, type PaymentMethod } from '@/services/order.service';
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
@@ -36,7 +37,14 @@ export default function PaymentGatewayPage() {
 
   useEffect(() => {
     let active = true;
-    getOrder(id).then((value) => { if (active) setOrder(value); }).catch((cause) => {
+    getOrder(id).then((value) => {
+      if (!active) return;
+      setOrder(value);
+      if (value.status === 'PAID' && localStorage.getItem('brewlite-pending-order-id') === value.id) {
+        finishPaidPendingOrder(localStorage, value.id);
+        window.dispatchEvent(new Event('cart-changed'));
+      }
+    }).catch((cause) => {
       if (active) setError(cause instanceof Error ? cause.message : 'Không thể tải đơn hàng.');
     });
     return () => { active = false; };
@@ -54,6 +62,10 @@ export default function PaymentGatewayPage() {
       sessionStorage.removeItem(storageKey);
       setResult(payment.status);
       setStage('result');
+      if (payment.status === 'SUCCESS' && localStorage.getItem('brewlite-pending-order-id') === order.id) {
+        finishPaidPendingOrder(localStorage, order.id);
+        window.dispatchEvent(new Event('cart-changed'));
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Không thể mô phỏng thanh toán.');
     } finally { setBusy(false); }

@@ -1,7 +1,7 @@
 # 뼈대를 잡는 FE-BE SKELETON: PRODUCT CATALOG (MENU SẢN PHẨM)
 
 **Phân hệ:** Product Catalog (CAT)  
-**Tác giả:**  (Owner Feature: Product Catalog)  
+**Tác giả:** Võ Thị Thủy (Owner Feature: Product Catalog)  
 **Phiên bản:** 1.1 — Đồng bộ theo quyết định của Nhóm trưởng  
 **Giai đoạn:** Architecture Mapping (Tuần 1)  
 

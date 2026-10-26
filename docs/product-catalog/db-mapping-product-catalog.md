@@ -1,7 +1,7 @@
 # 🗄️ DATABASE MAPPING – PRODUCT CATALOG (MENU SẢN PHẨM)
 
 **Phân hệ:** Product Catalog (CAT)  
-**Tác giả:**  (Owner Feature: Product Catalog)  
+**Tác giả:** Võ Thị Thủy (Owner Feature: Product Catalog)  
 **API liên kết:** `GET /api/v1/products`  
 **Giai đoạn:** Architecture Mapping (Tuần 1)  
 
