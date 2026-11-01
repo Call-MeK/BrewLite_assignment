@@ -84,7 +84,7 @@ model Product {
   name        String
   basePrice   Decimal  @map("base_price") @db.Decimal(12, 0) // Tiền VNĐ nguyên chẵn
   imageUrl    String?  @map("image_url")
-  stock       Int      @default(0) // Số lượng tồn kho (Task 10 Concurrency)
+ 
   version     Int      @default(0) // Phục vụ Optimistic Locking (Task 10)
   isAvailable Boolean  @default(true) @map("is_available")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -94,7 +94,7 @@ model Product {
   sizePrices ProductSizePrice[]
   orderItems OrderItem[]
   cartItems  CartItem[]
-
+  recipeItems RecipeItem[]
   @@map("products")
 }
 
@@ -105,7 +105,7 @@ model ProductSizePrice {
   priceAdjustment Decimal     @default(0) @map("price_adjustment") @db.Decimal(12, 0) // Phụ thu theo size
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
+  recipes Recipe[] 
   @@unique([productId, size])
   @@map("product_size_prices")
 }
@@ -277,4 +277,43 @@ model CartItem {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("cart_items")
+}
+model Ingredient {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  unit        String   // VD: "g", "ml", "cái"
+  stock       Float    @default(0) 
+  
+  version     Int      @default(0) 
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  price Float @default(0)
+  recipes     Recipe[]
+  recipeItems RecipeItem[]
+  @@map("ingredients")
+}
+
+model Recipe {
+  id                 String           @id @default(cuid())
+  productSizePriceId String           @map("product_size_price_id")
+  ingredientId       String           @map("ingredient_id")
+  quantityRequired   Float            @map("quantity_required") 
+
+  productSizePrice   ProductSizePrice @relation(fields: [productSizePriceId], references: [id], onDelete: Cascade)
+  ingredient         Ingredient       @relation(fields: [ingredientId], references: [id])
+
+  @@unique([productSizePriceId, ingredientId]) 
+  @@map("recipes")
+}
+model RecipeItem {
+  id           String     @id @default(cuid())
+  productId    String
+  ingredientId String
+  quantity     Float      // Định lượng (VD: 20, 120...)
+
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  // Đảm bảo một nguyên liệu không bị thêm 2 lần vào cùng 1 món nước
+  @@unique([productId, ingredientId]) 
 }

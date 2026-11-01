@@ -1,8 +1,13 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ProductSize } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
-import { AddCartItemDto } from './dto/add-cart-item.dto';
-import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { ProductSize } from "@prisma/client";
+import { PrismaService } from "../../prisma/prisma.service";
+import { AddCartItemDto } from "./dto/add-cart-item.dto";
+import { UpdateCartItemDto } from "./dto/update-cart-item.dto";
 
 @Injectable()
 export class CartService {
@@ -25,10 +30,16 @@ export class CartService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM carts WHERE id = ${dto.cartId} FOR UPDATE`;
       const existing = await tx.cartItem.findFirst({
-        where: { cartId: dto.cartId, productId: dto.productId, size: dto.size, toppingIds: { equals: toppingIds } },
+        where: {
+          cartId: dto.cartId,
+          productId: dto.productId,
+          size: dto.size,
+          toppingIds: { equals: toppingIds },
+        },
       });
       if (existing) {
-        if (existing.quantity + dto.quantity > 99) throw new BadRequestException('Số lượng tối đa là 99');
+        if (existing.quantity + dto.quantity > 99)
+          throw new BadRequestException("Số lượng tối đa là 99");
         const updated = await tx.cartItem.updateMany({
           where: {
             id: existing.id,
@@ -39,26 +50,45 @@ export class CartService {
           },
           data: { quantity: { increment: dto.quantity } },
         });
-        if (updated.count !== 1) throw new BadRequestException('Giỏ hàng vừa thay đổi hoặc vượt số lượng 99');
+        if (updated.count !== 1)
+          throw new BadRequestException(
+            "Giỏ hàng vừa thay đổi hoặc vượt số lượng 99",
+          );
         return tx.cartItem.findUnique({ where: { id: existing.id } });
       }
       return tx.cartItem.create({
-        data: { cartId: dto.cartId, productId: dto.productId, quantity: dto.quantity, size: dto.size, toppingIds },
+        data: {
+          cartId: dto.cartId,
+          productId: dto.productId,
+          quantity: dto.quantity,
+          size: dto.size,
+          toppingIds,
+        },
       });
     });
   }
 
-  async updateItemDetails(userId: string, itemId: string, dto: UpdateCartItemDto) {
+  async updateItemDetails(
+    userId: string,
+    itemId: string,
+    dto: UpdateCartItemDto,
+  ) {
     const item = await this.requireItem(itemId, userId);
     if (dto.size !== undefined || dto.toppingIds !== undefined) {
-      await this.requireSelection(item.productId, dto.size ?? item.size, dto.toppingIds ?? item.toppingIds);
+      await this.requireSelection(
+        item.productId,
+        dto.size ?? item.size,
+        dto.toppingIds ?? item.toppingIds,
+      );
     }
     return this.prisma.cartItem.update({
       where: { id: itemId },
       data: {
         ...(dto.quantity !== undefined ? { quantity: dto.quantity } : {}),
         ...(dto.size !== undefined ? { size: dto.size } : {}),
-        ...(dto.toppingIds !== undefined ? { toppingIds: [...dto.toppingIds].sort() } : {}),
+        ...(dto.toppingIds !== undefined
+          ? { toppingIds: [...dto.toppingIds].sort() }
+          : {}),
       },
     });
   }
@@ -74,8 +104,11 @@ export class CartService {
   }
 
   private async requireCart(cartId: string, userId: string) {
-    const cart = await this.prisma.cart.findUnique({ where: { id: cartId }, select: { userId: true } });
-    if (!cart) throw new NotFoundException('Không tìm thấy giỏ hàng');
+    const cart = await this.prisma.cart.findUnique({
+      where: { id: cartId },
+      select: { userId: true },
+    });
+    if (!cart) throw new NotFoundException("Không tìm thấy giỏ hàng");
     if (cart.userId !== userId) throw new ForbiddenException();
   }
 
@@ -84,24 +117,32 @@ export class CartService {
       where: { id: itemId },
       include: { cart: { select: { userId: true } } },
     });
-    if (!item) throw new NotFoundException('Không tìm thấy món hàng trong giỏ');
+    if (!item) throw new NotFoundException("Không tìm thấy món hàng trong giỏ");
     if (item.cart.userId !== userId) throw new ForbiddenException();
     return item;
   }
 
-  private async requireSelection(productId: string, size: ProductSize, toppingIds: string[]) {
+  private async requireSelection(
+    productId: string,
+    size: ProductSize,
+    toppingIds: string[],
+  ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
-      select: { isAvailable: true, stock: true, sizePrices: { where: { size }, select: { id: true } } },
+      select: {
+        isAvailable: true,
+        sizePrices: { where: { size }, select: { id: true } },
+      },
     });
-    if (!product?.isAvailable || product.stock < 1 || product.sizePrices.length === 0) {
-      throw new BadRequestException('Sản phẩm hoặc kích cỡ không khả dụng');
+    if (!product?.isAvailable || product.sizePrices.length === 0) {
+      throw new BadRequestException("Sản phẩm hoặc kích cỡ không khả dụng");
     }
     if (toppingIds.length > 0) {
       const count = await this.prisma.topping.count({
         where: { id: { in: toppingIds }, isAvailable: true, stock: { gt: 0 } },
       });
-      if (count !== toppingIds.length) throw new BadRequestException('Topping không khả dụng');
+      if (count !== toppingIds.length)
+        throw new BadRequestException("Topping không khả dụng");
     }
   }
 }

@@ -1,11 +1,11 @@
-import { PrismaClient, ProductSize } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
-import { additionalMenuItems } from './additional-menu-items';
+import { PrismaClient, ProductSize } from "@prisma/client";
+import * as bcrypt from "bcrypt";
+import { additionalMenuItems } from "./additional-menu-items";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Bắt đầu nạp dữ liệu mẫu (Seeding BrewLite DB)...');
+  console.log("🌱 Bắt đầu nạp dữ liệu mẫu (Seeding BrewLite DB)...");
 
   // 1. Xóa dữ liệu cũ theo thứ tự quan hệ
   await prisma.orderItemTopping.deleteMany();
@@ -20,14 +20,16 @@ async function main() {
   await prisma.topping.deleteMany();
   await prisma.promotion.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.recipe.deleteMany();
+  await prisma.ingredient.deleteMany();
 
   // 2. Tạo User Demo
-  const passwordHash = await bcrypt.hash('Demo@12345', 10);
+  const passwordHash = await bcrypt.hash("Demo@12345", 10);
   const demoUser = await prisma.user.create({
     data: {
-      email: 'demo@brewlite.test',
+      email: "demo@brewlite.test",
       passwordHash,
-      fullName: 'Khách hàng Demo',
+      fullName: "Khách hàng Demo",
       loyaltyPoints: 120, // Có sẵn 120 điểm loyalty
     },
   });
@@ -36,25 +38,25 @@ async function main() {
   // 3. Tạo Categories
   const catCoffee = await prisma.category.create({
     data: {
-      name: 'Cà phê',
-      slug: 'ca-phe',
+      name: "Cà phê",
+      slug: "ca-phe",
       displayOrder: 1,
     },
   });
 
   const catTea = await prisma.category.create({
     data: {
-      name: 'Trà & Trái cây',
-      slug: 'tra-trai-cay',
+      name: "Trà & Trái cây",
+      slug: "tra-trai-cay",
       displayOrder: 2,
     },
   });
-  console.log('✅ Đã tạo 2 danh mục: Cà phê, Trà & Trái cây');
+  console.log("✅ Đã tạo 2 danh mục: Cà phê, Trà & Trái cây");
 
   // 4. Tạo Toppings
   const toppingBoba = await prisma.topping.create({
     data: {
-      name: 'Trân châu hoàng kim',
+      name: "Trân châu hoàng kim",
       price: 5000,
       stock: 200,
     },
@@ -62,7 +64,7 @@ async function main() {
 
   const toppingCheese = await prisma.topping.create({
     data: {
-      name: 'Vải',
+      name: "Vải",
       price: 8000,
       stock: 150,
     },
@@ -70,46 +72,48 @@ async function main() {
 
   const toppingPeach = await prisma.topping.create({
     data: {
-      name: 'Đác thơm',
+      name: "Đác thơm",
       price: 8000,
       stock: 100,
     },
   });
-  console.log('✅ Đã tạo 3 topping: Trân châu hoàng kim (5k), Vải (8k), Đác thơm (8k)');
+  console.log(
+    "✅ Đã tạo 3 topping: Trân châu hoàng kim (5k), Vải (8k), Đác thơm (8k)",
+  );
 
   // 5. Tạo Sản phẩm kèm giá Size phụ thu (S: 0, M: +5k, L: +10k)
   const productsData = [
     {
       categoryId: catCoffee.id,
-      name: 'Cà phê sữa đá',
+      name: "Cà phê sữa đá",
       basePrice: 35000,
-      imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600',
-      stock: 100,
+      imageUrl:
+        "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600",
     },
     {
       categoryId: catCoffee.id,
-      name: 'Americano',
+      name: "Americano",
       basePrice: 40000,
-      imageUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600',
-      stock: 80,
+      imageUrl:
+        "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600",
     },
     {
       categoryId: catCoffee.id,
-      name: 'Cappuccino',
+      name: "Cappuccino",
       basePrice: 45000,
-      imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=600',
-      stock: 60,
+      imageUrl:
+        "https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=600",
     },
     {
       categoryId: catTea.id,
-      name: 'Trà đào cam sả',
+      name: "Trà đào cam sả",
       basePrice: 39000,
-      imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600',
-      stock: 75,
+      imageUrl:
+        "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600",
     },
-    ...additionalMenuItems.map(({ categorySlug, ...item }) => ({
+    ...additionalMenuItems.map(({ categorySlug, stock, ...item }) => ({
       ...item,
-      categoryId: categorySlug === 'ca-phe' ? catCoffee.id : catTea.id,
+      categoryId: categorySlug === "ca-phe" ? catCoffee.id : catTea.id,
     })),
   ];
 
@@ -126,37 +130,67 @@ async function main() {
         },
       },
     });
-    console.log(`✅ Đã tạo sản phẩm: ${product.name} (Base: ${product.basePrice}đ) kèm size S/M/L`);
+    console.log(
+      `✅ Đã tạo sản phẩm: ${product.name} (Base: ${product.basePrice}đ) kèm size S/M/L`,
+    );
   }
+  // KHỞI TẠO NGUYÊN LIỆU & CÔNG THỨC
+  const coffee = await prisma.ingredient.create({
+    data: { name: "Cà phê hạt Arabica", unit: "gram", stock: 5000 },
+  });
+  const milk = await prisma.ingredient.create({
+    data: { name: "Sữa tươi", unit: "ml", stock: 10000 },
+  });
 
+  // Lúc này mới tìm Size, vì Sản phẩm đã được tạo ở Bước 5
+  const sampleSize = await prisma.productSizePrice.findFirst();
+  if (sampleSize) {
+    await prisma.recipe.createMany({
+      data: [
+        {
+          productSizePriceId: sampleSize.id,
+          ingredientId: coffee.id,
+          quantityRequired: 20,
+        },
+        {
+          productSizePriceId: sampleSize.id,
+          ingredientId: milk.id,
+          quantityRequired: 50,
+        },
+      ],
+    });
+    console.log(
+      `✅ Đã tạo công thức mẫu (20g Cafe, 50ml Sữa) cho Size ID: ${sampleSize.id}`,
+    );
+  }
   // 6. Tạo Promotions (Vouchers)
   await prisma.promotion.createMany({
     data: [
       {
-        code: 'WELCOME10',
-        description: 'Giảm 10% tối đa 20.000đ cho đơn từ 40.000đ',
+        code: "WELCOME10",
+        description: "Giảm 10% tối đa 20.000đ cho đơn từ 40.000đ",
         discountPercent: 10,
         maxDiscount: 20000,
         minOrderAmount: 40000,
         isActive: true,
       },
       {
-        code: 'GIAM15K',
-        description: 'Giảm thẳng 15.000đ cho đơn từ 60.000đ',
+        code: "GIAM15K",
+        description: "Giảm thẳng 15.000đ cho đơn từ 60.000đ",
         discountAmount: 15000,
         minOrderAmount: 60000,
         isActive: true,
       },
     ],
   });
-  console.log('✅ Đã tạo 2 voucher khuyến mãi: WELCOME10, GIAM15K');
+  console.log("✅ Đã tạo 2 voucher khuyến mãi: WELCOME10, GIAM15K");
 
-  console.log('🎉 Hoàn tất nạp dữ liệu mẫu cho BrewLite!');
+  console.log("🎉 Hoàn tất nạp dữ liệu mẫu cho BrewLite!");
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Lỗi khi seed DB:', e);
+    console.error("❌ Lỗi khi seed DB:", e);
     process.exit(1);
   })
   .finally(async () => {
