@@ -12,6 +12,7 @@ async function bootstrap() {
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    exposedHeaders: ['Retry-After'],
   });
 
   // 2. Global Prefix REST API (/api/v1)

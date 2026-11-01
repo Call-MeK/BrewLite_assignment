@@ -17,6 +17,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: any = 'Lỗi hệ thống máy chủ nội bộ';
     let error = 'Internal Server Error';
+    let retryAfter: number | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -24,6 +25,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof res === 'object' && res !== null) {
         message = (res as any).message || exception.message;
         error = (res as any).error || exception.name;
+        if (status === 429 && Number.isInteger((res as any).retryAfter)) retryAfter = (res as any).retryAfter;
       } else {
         message = res;
       }
@@ -34,6 +36,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       error,
       message,
+      ...(retryAfter !== undefined ? { retryAfter } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });

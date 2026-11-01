@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api-client';
 import { addOrMergeCartItem } from '@/lib/cart-items';
 import { getProductById } from '@/services/product.service';
 import type { CartItemDraft, ProductDetail, ProductSize } from '@/types/product';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 const money = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
@@ -29,6 +30,7 @@ function isValidProduct(value: ProductDetail): boolean {
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const cooldown = useRequestCooldown('GET', `/products/${id}`);
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -119,7 +121,7 @@ export default function ProductDetailPage() {
       <h1 className="text-2xl font-black text-navy">{error.includes('Không tìm thấy') ? 'Không tìm thấy sản phẩm' : 'Chưa thể tải sản phẩm'}</h1>
       <p className="mt-3 text-content-secondary">{error || 'Dữ liệu sản phẩm không khả dụng.'}</p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <button onClick={() => void loadProduct()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-white"><RefreshCw size={17} /> Thử lại</button>
+        <button disabled={cooldown.blocked} onClick={() => { if (cooldown.start()) void loadProduct(); }} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-white"><RefreshCw size={17} /> {cooldown.label || 'Thử lại'}</button>
         <Link href="/menu" className="rounded-xl border border-border-light px-4 py-3 font-semibold text-navy">Quay lại thực đơn</Link>
       </div>
     </div>;

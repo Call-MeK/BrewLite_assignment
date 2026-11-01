@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, ClipboardList } from 'lucide-react';
 import { ApiError } from '@/lib/api-client';
 import { getOrders, orderStatusLabel, type OrderSummary } from '@/services/order.service';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 const date = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
 export default function OrdersPage() {
+  const cooldown = useRequestCooldown('GET', '/orders/me');
   const [page, setPage] = useState(1);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -48,7 +50,7 @@ export default function OrdersPage() {
     {unauthorized ? <div className="rounded-2xl border border-border-light bg-white p-8 text-center">
       <p className="text-content-secondary">Đăng nhập để xem đơn hàng của bạn.</p>
       <Link href="/login?next=%2Forders" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-primary px-5 font-semibold text-white">Đăng nhập</Link>
-    </div> : loading ? <p role="status" className="rounded-2xl bg-white p-8 text-content-secondary">Đang tải đơn hàng...</p> : error ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">{error}<button type="button" onClick={() => window.location.reload()} className="ml-2 font-semibold underline">Thử lại</button></div> : orders.length === 0 ? <div className="rounded-2xl border border-border-light bg-white p-10 text-center">
+    </div> : loading ? <p role="status" className="rounded-2xl bg-white p-8 text-content-secondary">Đang tải đơn hàng...</p> : error ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">{error}<button type="button" disabled={cooldown.blocked} onClick={() => { if (cooldown.start()) window.location.reload(); }} className="ml-2 font-semibold underline">{cooldown.label || 'Thử lại'}</button></div> : orders.length === 0 ? <div className="rounded-2xl border border-border-light bg-white p-10 text-center">
       <ClipboardList size={38} className="mx-auto text-primary" aria-hidden="true" />
       <h2 className="mt-4 text-xl font-bold text-navy">Chưa có đơn hàng</h2>
       <p className="mt-2 text-content-secondary">Chọn món trong thực đơn để bắt đầu nhé.</p>
@@ -68,9 +70,9 @@ export default function OrdersPage() {
         </Link>)}
       </div>
       <div className="flex justify-between gap-3">
-        <button type="button" disabled={page === 1} onClick={() => { setLoading(true); setError(''); setPage(page - 1); }} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-semibold text-navy disabled:opacity-40">Trang trước</button>
+        <button type="button" disabled={page === 1 || cooldown.blocked} onClick={() => { if (cooldown.start()) { setLoading(true); setError(''); setPage(page - 1); } }} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-semibold text-navy disabled:opacity-40">{cooldown.label || 'Trang trước'}</button>
         <span className="self-center text-sm text-content-secondary">Trang {page}</span>
-        <button type="button" disabled={!hasNextPage} onClick={() => { setLoading(true); setError(''); setPage(page + 1); }} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-semibold text-navy disabled:opacity-40">Trang sau</button>
+        <button type="button" disabled={!hasNextPage || cooldown.blocked} onClick={() => { if (cooldown.start()) { setLoading(true); setError(''); setPage(page + 1); } }} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-semibold text-navy disabled:opacity-40">{cooldown.label || 'Trang sau'}</button>
       </div>
     </>}
   </section>;

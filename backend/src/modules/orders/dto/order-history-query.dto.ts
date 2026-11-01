@@ -7,6 +7,7 @@ export class OrderHistoryQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(1000000)
   page = 1;
 
   @IsOptional()

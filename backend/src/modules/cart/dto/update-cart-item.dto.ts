@@ -1,5 +1,5 @@
 import { ProductSize } from '@prisma/client';
-import { ArrayMaxSize, ArrayUnique, IsArray, IsEnum, IsInt, IsString, Max, Min, ValidateIf } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsEnum, IsInt, IsNotEmpty, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 export class UpdateCartItemDto {
   @ValidateIf((_, value) => value !== undefined)
@@ -17,5 +17,7 @@ export class UpdateCartItemDto {
   @ArrayMaxSize(3)
   @ArrayUnique()
   @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  @MaxLength(36, { each: true })
   toppingIds?: string[];
 }

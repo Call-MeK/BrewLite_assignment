@@ -5,6 +5,7 @@ import { Check, Coffee, Minus, Plus, RefreshCw, ShoppingBag, X } from 'lucide-re
 import { addOrMergeCartItem, replaceCartItem } from '@/lib/cart-items';
 import { getProductById } from '@/services/product.service';
 import type { CartItemDraft, ProductDetail, ProductSize } from '@/types/product';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function ProductPurchaseModal({ productId, initialItem, editingIndex, onClose, onSaved }: Props) {
+  const cooldown = useRequestCooldown('GET', `/products/${productId}`);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [size, setSize] = useState<ProductSize | ''>('');
@@ -84,7 +86,7 @@ export function ProductPurchaseModal({ productId, initialItem, editingIndex, onC
 
   return <dialog ref={dialogRef} onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }} aria-label="Đặt mua sản phẩm" className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl overflow-y-auto rounded-3xl border-0 bg-white p-0 text-content-primary shadow-2xl backdrop:bg-black/70">
     <button type="button" onClick={onClose} aria-label="Đóng cửa sổ đặt mua" className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white text-navy shadow-md hover:bg-primary-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><X size={21} /></button>
-    {!product && !error ? <div className="grid min-h-80 place-items-center text-content-secondary" role="status">Đang tải sản phẩm...</div> : !product ? <div className="grid min-h-80 place-content-center p-8 text-center"><p role="alert" className="text-red-700">{error}</p><button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-bold text-white"><RefreshCw size={17} /> Thử lại</button></div> : <div className="grid lg:grid-cols-[44%_56%]">
+    {!product && !error ? <div className="grid min-h-80 place-items-center text-content-secondary" role="status">Đang tải sản phẩm...</div> : !product ? <div className="grid min-h-80 place-content-center p-8 text-center"><p role="alert" className="text-red-700">{error}</p><button type="button" disabled={cooldown.blocked} onClick={() => { if (cooldown.start()) setRetry((value) => value + 1); }} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-bold text-white"><RefreshCw size={17} /> {cooldown.label || 'Thử lại'}</button></div> : <div className="grid lg:grid-cols-[44%_56%]">
       <div className="flex h-52 items-center justify-center overflow-hidden bg-primary-light sm:h-72 lg:h-auto lg:min-h-[580px]">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <Coffee size={80} className="text-primary/40" aria-hidden="true" />}</div>
       <div className="flex flex-col p-5 sm:p-8 lg:p-10">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">BrewLite · Đặt mua</p>
