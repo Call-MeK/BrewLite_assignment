@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 import { Coffee, RefreshCw, Search, ShoppingBag } from 'lucide-react';
 import { ApiError } from '@/lib/api-client';
 import { filterMenu } from '@/lib/menu-filter';
@@ -13,6 +14,7 @@ const money = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
 export default function MenuPage() {
+  const cooldown = useRequestCooldown('GET', '/products');
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -81,7 +83,7 @@ export default function MenuPage() {
       ) : error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
           <p className="font-semibold text-red-800">{error}</p>
-          <button onClick={() => void loadProducts()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"><RefreshCw size={16} aria-hidden="true" /> Thử lại</button>
+          <button disabled={cooldown.blocked} onClick={() => { if (cooldown.start()) void loadProducts(); }} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"><RefreshCw size={16} aria-hidden="true" /> {cooldown.label || 'Thử lại'}</button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-border-light bg-white p-10 text-center text-content-secondary">

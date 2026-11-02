@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ApiError, fetchApi } from '@/lib/api-client';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 interface AuthResult {
   accessToken: string;
@@ -15,6 +16,7 @@ interface AuthResult {
 }
 
 export default function SecurityPage() {
+  const cooldown = useRequestCooldown('POST', '/auth/change-password');
   const [hasToken, setHasToken] = useState<boolean | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -29,12 +31,14 @@ export default function SecurityPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting || cooldown.blocked) return;
     setError('');
     setMessage('');
     if (newPassword !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp');
       return;
     }
+    if (!cooldown.start()) return;
     setIsSubmitting(true);
     try {
       const result = await fetchApi<AuthResult>('/auth/change-password', {
@@ -118,10 +122,10 @@ export default function SecurityPage() {
         {message && <p role="status" className="text-sm text-green-700">{message}</p>}
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || cooldown.blocked}
           className="w-full rounded-lg bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
-          {isSubmitting ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+          {isSubmitting ? 'Đang xử lý...' : cooldown.label || 'Đổi mật khẩu'}
         </button>
       </form>
     </section>

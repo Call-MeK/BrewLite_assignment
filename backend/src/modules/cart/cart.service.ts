@@ -49,6 +49,9 @@ export class CartService {
   }
 
   async updateItemDetails(userId: string, itemId: string, dto: UpdateCartItemDto) {
+    if (dto.quantity === undefined && dto.size === undefined && dto.toppingIds === undefined) {
+      throw new BadRequestException('Cần cung cấp số lượng, size hoặc topping để cập nhật');
+    }
     const item = await this.requireItem(itemId, userId);
     if (dto.size !== undefined || dto.toppingIds !== undefined) {
       await this.requireSelection(item.productId, dto.size ?? item.size, dto.toppingIds ?? item.toppingIds);
@@ -92,14 +95,15 @@ export class CartService {
   private async requireSelection(productId: string, size: ProductSize, toppingIds: string[]) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
-      select: { isAvailable: true, stock: true, sizePrices: { where: { size }, select: { id: true } } },
+      select: { isAvailable: true, stock: true, category: { select: { slug: true } }, sizePrices: { where: { size }, select: { id: true } } },
     });
     if (!product?.isAvailable || product.stock < 1 || product.sizePrices.length === 0) {
       throw new BadRequestException('Sản phẩm hoặc kích cỡ không khả dụng');
     }
     if (toppingIds.length > 0) {
+      if (product.category?.slug === 'ca-phe') throw new BadRequestException('Cà phê không hỗ trợ topping');
       const count = await this.prisma.topping.count({
-        where: { id: { in: toppingIds }, isAvailable: true, stock: { gt: 0 } },
+        where: { id: { in: toppingIds }, name: { in: ['Vải', 'Đác thơm', 'Trân châu hoàng kim'] }, isAvailable: true, stock: { gt: 0 } },
       });
       if (count !== toppingIds.length) throw new BadRequestException('Topping không khả dụng');
     }

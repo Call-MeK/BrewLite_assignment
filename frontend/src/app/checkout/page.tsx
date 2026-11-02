@@ -1,5 +1,7 @@
 'use client';
 
+import { useRequestCooldown } from '@/components/use-request-cooldown';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,6 +14,7 @@ import type { CartItemDraft } from '@/types/product';
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
 export default function CheckoutPage() {
+  const cooldown = useRequestCooldown('POST', '/orders');
   const router = useRouter();
   const [items, setItems] = useState<CartItemDraft[]>([]);
   const [ready, setReady] = useState(false);
@@ -57,7 +60,8 @@ export default function CheckoutPage() {
   const pointsDiscount = validPoints ? pointsToUse * 100 : 0;
 
   async function placeOrder() {
-    if (busy || !ready || items.length === 0) return;
+    if (busy || cooldown.blocked || !ready || items.length === 0) return;
+    if (items.length > 50) { setError('Mỗi đơn hàng được tối đa 50 dòng món.'); return; }
     if (!validPoints) {
       setError('Điểm sử dụng phải là bội số của 10 và không vượt quá điểm khả dụng hoặc giá trị đơn hàng.');
       return;
@@ -70,6 +74,7 @@ export default function CheckoutPage() {
       setError('Could not verify your account. Sign in again before placing the order.');
       return;
     }
+    if (!cooldown.start()) return;
     setBusy(true);
     setError('');
     try {
@@ -117,7 +122,7 @@ export default function CheckoutPage() {
         <div className="mt-5 space-y-2 border-t border-border-light pt-4 text-sm"><p className="flex justify-between gap-3"><span className="text-content-secondary">Tạm tính</span><span>{money(total)}</span></p><p className="flex justify-between gap-3"><span className="text-content-secondary">Giảm bằng điểm</span><span>-{money(pointsDiscount)}</span></p><p className="flex justify-between gap-3 border-t border-border-light pt-3 text-base font-bold text-navy"><span>Dự kiến thanh toán</span><span>{money(total - pointsDiscount)}</span></p></div>
         <p className="mt-3 text-xs leading-5 text-content-secondary">Giá chính xác được tính khi tạo đơn. Điểm sẽ được hoàn nếu bạn hủy đơn trước khi thanh toán.</p>
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error} Nếu kết nối bị ngắt, hãy kiểm tra <Link href="/orders" className="font-semibold underline">lịch sử đơn hàng</Link> trước khi thử lại.</p>}
-        <button type="button" onClick={() => void placeOrder()} disabled={busy || !ready || !validPoints} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-4 font-bold text-white hover:bg-primary-hover disabled:opacity-50">{busy ? 'Đang đặt hàng...' : 'Đặt hàng và đến cổng thanh toán'}</button>
+        <button type="button" onClick={() => void placeOrder()} disabled={busy || cooldown.blocked || !ready || !validPoints || items.length > 50} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-4 font-bold text-white hover:bg-primary-hover disabled:opacity-50">{busy ? 'Đang đặt hàng...' : cooldown.label || 'Đặt hàng và đến cổng thanh toán'}</button>
       </aside>
     </div>}
   </section>;
