@@ -5,6 +5,7 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Max,
@@ -17,6 +18,7 @@ import { ProductSize } from '@prisma/client';
 
 export class CreateOrderItemDto {
   @IsString()
+  @IsNotEmpty()
   @MaxLength(36)
   productId: string;
 
@@ -34,12 +36,15 @@ export class CreateOrderItemDto {
   @ArrayUnique()
   @ArrayMaxSize(3)
   @IsString({ each: true })
+  @MaxLength(36, { each: true })
+  @IsNotEmpty({ each: true })
   toppingIds?: string[];
 }
 
 export class CreateOrderDto {
   @IsArray()
   @ArrayNotEmpty()
+  @ArrayMaxSize(50)
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];

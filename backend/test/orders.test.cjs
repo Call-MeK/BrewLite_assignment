@@ -18,6 +18,7 @@ test('order state machine rejects transitions out of terminal states', () => {
 test('create calculates prices on the server and reserves product and topping stock', async () => {
   let createOrderArgs;
   const tx = {
+    recipeIngredient: { findMany: async () => [] },
     product: {
       findMany: async () => [{
         id: 'product-1',
@@ -102,6 +103,7 @@ test('create redeems 20 points for 2000 VND using an atomic balance check', asyn
     items: [], statusHistory: [],
   }));
   const tx = {
+    recipeIngredient: { findMany: async () => [] },
     product: {
       findMany: async () => [{ id: 'coffee', name: 'Coffee', basePrice: 30000, version: 1, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }] }],
       updateMany: async () => ({ count: 1 }),
@@ -127,6 +129,7 @@ test('create redeems 20 points for 2000 VND using an atomic balance check', asyn
 
 test('create rejects invalid or unaffordable point redemption', async () => {
   const tx = {
+    recipeIngredient: { findMany: async () => [] },
     product: {
       findMany: async () => [{ id: 'coffee', name: 'Coffee', basePrice: 1000, version: 1, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }] }],
       updateMany: async () => ({ count: 1 }),
@@ -145,6 +148,7 @@ test('create rejects invalid or unaffordable point redemption', async () => {
 test('create rejects toppings on coffee even when the topping exists', async () => {
   const createOrder = mock.fn(async () => ({}));
   const tx = {
+    recipeIngredient: { findMany: async () => [] },
     product: { findMany: async () => [{
       id: 'coffee', name: 'Coffee', basePrice: 30000, stock: 10, version: 1,
       category: { slug: 'ca-phe' }, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }],
@@ -162,7 +166,7 @@ test('cancel refunds redeemed points once with the order transition', async () =
   const refunded = mock.fn(async () => ({}));
   const tx = {
     order: {
-      findFirst: async () => ({ id: 'order-1', orderNumber: 1, status: OrderStatus.PENDING, version: 0, items: [], loyaltyTransactions: [{ points: 20 }] }),
+      findFirst: async () => ({ id: 'order-1', orderNumber: 1, status: OrderStatus.PENDING, version: 0, items: [], ingredients: [], loyaltyTransactions: [{ points: 20 }] }),
       updateMany: async () => ({ count: 1 }),
     },
     user: { update: restorePoints },

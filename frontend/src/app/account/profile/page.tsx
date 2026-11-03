@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { CircleUserRound } from 'lucide-react';
 import { ApiError, fetchApi } from '@/lib/api-client';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 interface Profile {
   id: string;
@@ -13,6 +14,8 @@ interface Profile {
 }
 
 export default function ProfilePage() {
+  const cooldown = useRequestCooldown('PUT', '/auth/me');
+  const retryCooldown = useRequestCooldown('GET', '/auth/me');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,7 +48,7 @@ export default function ProfilePage() {
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!profile) return;
+    if (!profile || saving || cooldown.blocked) return;
     if (!fullName.trim()) {
       setError('Vui lòng nhập họ và tên.');
       return;
@@ -55,6 +58,7 @@ export default function ProfilePage() {
       setError('Vui lòng nhập mật khẩu hiện tại để đổi email.');
       return;
     }
+    if (!cooldown.start()) return;
     setSaving(true);
     setError('');
     setMessage('');
@@ -91,14 +95,14 @@ export default function ProfilePage() {
       <p className="text-content-secondary">Đăng nhập để xem và chỉnh sửa hồ sơ.</p>
       <Link href="/login" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-primary px-5 font-semibold text-white">Đăng nhập</Link>
     </div> : loading ? <p role="status" className="rounded-2xl bg-white p-8 text-content-secondary">Đang tải hồ sơ...</p> : !profile ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
-      {error || 'Không thể tải hồ sơ.'} <button type="button" onClick={() => window.location.reload()} className="font-semibold underline">Thử lại</button>
+      {error || 'Không thể tải hồ sơ.'} <button type="button" disabled={retryCooldown.blocked} onClick={() => { if (retryCooldown.start()) window.location.reload(); }} className="font-semibold underline">{retryCooldown.label || 'Thử lại'}</button>
     </div> : <div className="grid gap-6 md:grid-cols-[1fr_250px]">
       <div className="rounded-2xl border border-border-light bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-xl font-bold text-navy">Thông tin cá nhân</h2>
         <p className="mt-1 text-sm text-content-secondary">Email cũng được dùng để đăng nhập.</p>
         <form onSubmit={(event) => void saveProfile(event)} className="mt-6 space-y-5">
           <label className="block text-sm font-semibold text-navy">Họ và tên
-            <input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required className="mt-2 block min-h-12 w-full rounded-xl border border-border-light px-4 font-normal text-content-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <input value={fullName} maxLength={100} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required className="mt-2 block min-h-12 w-full rounded-xl border border-border-light px-4 font-normal text-content-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </label>
           <label className="block text-sm font-semibold text-navy">Email
             <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required className="mt-2 block min-h-12 w-full rounded-xl border border-border-light px-4 font-normal text-content-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
@@ -108,7 +112,7 @@ export default function ProfilePage() {
           </label>}
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
           {message && <p role="status" className="rounded-xl bg-success-light p-3 text-sm text-success">{message}</p>}
-          <button type="submit" disabled={saving} className="min-h-12 rounded-xl bg-primary px-6 font-bold text-white hover:bg-primary-hover disabled:opacity-60">{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
+          <button type="submit" disabled={saving || cooldown.blocked} className="min-h-12 rounded-xl bg-primary px-6 font-bold text-white hover:bg-primary-hover disabled:opacity-60">{saving ? 'Đang lưu...' : cooldown.label || 'Lưu thay đổi'}</button>
         </form>
       </div>
       <aside className="h-fit rounded-2xl border border-border-light bg-white p-6 shadow-sm">

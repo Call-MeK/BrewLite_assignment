@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fetchApi } from '@/lib/api-client';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 interface PublicUser {
   id: string;
@@ -27,19 +28,22 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [returnPath, setReturnPath] = useState('/');
   const isRegister = mode === 'register';
+  const cooldown = useRequestCooldown('POST', isRegister ? '/auth/register' : '/auth/login');
 
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get('next');
-    if (next === '/cart' || next === '/orders') setReturnPath(next);
+    if (next === '/cart' || next === '/checkout' || next === '/orders') setReturnPath(next);
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting || cooldown.blocked) return;
     setError('');
     if (isRegister && password !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp');
       return;
     }
+    if (!cooldown.start()) return;
     setIsSubmitting(true);
     try {
       const result = await fetchApi<AuthResult>(
@@ -82,6 +86,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
             <input
               className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
               autoComplete="name"
+              maxLength={100}
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
               required
@@ -128,10 +133,10 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || cooldown.blocked}
           className="w-full rounded-lg bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
-          {isSubmitting ? 'Đang xử lý...' : isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}
+          {isSubmitting ? 'Đang xử lý...' : cooldown.label || (isRegister ? 'Tạo tài khoản' : 'Đăng nhập')}
         </button>
       </form>
 

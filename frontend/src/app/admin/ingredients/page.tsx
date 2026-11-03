@@ -174,15 +174,13 @@ export default function IngredientsPage() {
                 <label className="block text-sm font-medium mb-1">
                   Đơn vị tính (VD: gram, ml)
                 </label>
-                <input
-                  required
-                  type="text"
-                  className="w-full border p-2 rounded"
-                  value={formData.unit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, unit: e.target.value })
-                  }
-                />
+                <select required className="w-full border p-2 rounded" value={formData.unit}
+                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}>
+                  <option value="">--</option>
+                  <option value="G">g</option>
+                  <option value="ML">ml</option>
+                  <option value="PIECE">piece</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">

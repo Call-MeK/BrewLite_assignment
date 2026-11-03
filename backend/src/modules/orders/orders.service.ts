@@ -92,6 +92,7 @@ export class OrdersService {
             }
           }
 
+          const productQuantities = new Map<string, number>();
           const toppingQuantities = new Map<string, number>();
           let totalAmount = 0;
           const orderItems = dto.items.map((item) => {
@@ -132,6 +133,7 @@ export class OrdersService {
                 )) *
               item.quantity;
 
+            productQuantities.set(item.productId, (productQuantities.get(item.productId) ?? 0) + item.quantity);
             totalAmount += lineTotal;
 
             return {
@@ -147,11 +149,20 @@ export class OrdersService {
           // =================================================================
           // [MỚI] BOM: TÍNH TOÁN VÀ TRỪ KHO NGUYÊN LIỆU (INGREDIENT)
           // =================================================================
+          for (const productId of [...productQuantities.keys()].sort()) {
+            const product = productsById.get(productId)!;
+            const quantity = productQuantities.get(productId)!;
+            const updated = await tx.product.updateMany({
+              where: { id: productId, isAvailable: true, version: product.version, stock: { gte: quantity } },
+              data: { stock: { decrement: quantity }, version: { increment: 1 } },
+            });
+            if (updated.count !== 1) throw new BadRequestException(`Sản phẩm không đủ tồn kho: ${product.name}`);
+          }
+
           const requiredIngredients = await this.calculateRequiredIngredients(
             tx,
             orderItems,
           );
-          console.log("=== NGUYÊN LIỆU CẦN TRỪ ===", requiredIngredients);
 
           for (const req of requiredIngredients) {
             const ingredient = await tx.ingredient.findUnique({
@@ -275,6 +286,7 @@ export class OrdersService {
               discountAmount,
               finalAmount,
               items: { create: orderItems },
+              ingredients: { create: requiredIngredients.map(({ ingredientId, totalQuantity }) => ({ ingredientId, quantity: totalQuantity })) },
               statusHistory: {
                 create: {
                   fromStatus: null,
@@ -361,17 +373,15 @@ export class OrdersService {
     const ingredientMap = new Map<string, number>();
 
     for (const item of cartItems) {
-      // Lấy công thức pha chế từ bảng RecipeItem (theo productId)
-      const recipes = await tx.recipeItem.findMany({
-        where: { productId: item.productId },
+      const recipes = await tx.recipeIngredient.findMany({
+        where: { productId: item.productId, size: item.size },
       });
 
       // Nhân định mức với số lượng ly khách đặt
       for (const recipe of recipes) {
         const currentTotal = ingredientMap.get(recipe.ingredientId) || 0;
 
-        // Chú ý: Ở bảng RecipeItem, trường định lượng tên là 'quantity'
-        const additionalQuantity = recipe.quantity * item.quantity;
+        const additionalQuantity = Number(recipe.quantity) * item.quantity;
 
         ingredientMap.set(
           recipe.ingredientId,
@@ -392,6 +402,7 @@ export class OrdersService {
         const order = await tx.order.findFirst({
           where: { id: orderId, userId },
           include: {
+            ingredients: true,
             loyaltyTransactions: {
               where: { type: LoyaltyTransactionType.SPENT },
               select: { points: true },
@@ -433,10 +444,7 @@ export class OrdersService {
         }
 
         // [MỚI] BOM: HOÀN TRẢ KHO NGUYÊN LIỆU (INGREDIENT)
-        const requiredIngredients = await this.calculateRequiredIngredients(
-          tx,
-          order.items,
-        );
+        const requiredIngredients = order.ingredients.map(item => ({ ingredientId: item.ingredientId, totalQuantity: item.quantity }));
         for (const req of requiredIngredients) {
           const ingredientRestored = await tx.ingredient.updateMany({
             where: { id: req.ingredientId },
@@ -454,6 +462,8 @@ export class OrdersService {
 
         // HOÀN TRẢ KHO TOPPING
         for (const item of order.items) {
+          const productRestored = await tx.product.updateMany({ where: { id: item.productId }, data: { stock: { increment: item.quantity }, version: { increment: 1 } } });
+          if (productRestored.count !== 1) throw new ConflictException("Không thể hoàn lại tồn kho sản phẩm");
           for (const topping of item.toppings) {
             const toppingRestored = await tx.topping.updateMany({
               where: { id: topping.toppingId },

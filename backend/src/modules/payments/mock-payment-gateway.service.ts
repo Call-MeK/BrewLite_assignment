@@ -19,7 +19,6 @@ export class MockPaymentGatewayService {
     }
     return header === 'FAILED' ? 'FAILED' : 'SUCCESS';
   }
-
   // Local simulation only; this method must never perform network I/O.
   pay(outcome: 'SUCCESS' | 'FAILED') {
     return {

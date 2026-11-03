@@ -14,13 +14,14 @@ async function main() {
   await prisma.orderStatusHistory.deleteMany();
   await prisma.loyaltyTransaction.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.orderIngredient.deleteMany();
+  await prisma.recipeIngredient.deleteMany();
   await prisma.productSizePrice.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
   await prisma.topping.deleteMany();
   await prisma.promotion.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.recipe.deleteMany();
   await prisma.ingredient.deleteMany();
 
   // 2. Tạo User Demo
@@ -121,6 +122,7 @@ async function main() {
     const product = await prisma.product.create({
       data: {
         ...item,
+        stock: 100,
         sizePrices: {
           create: [
             { size: ProductSize.S, priceAdjustment: 0 },
@@ -136,26 +138,28 @@ async function main() {
   }
   // KHỞI TẠO NGUYÊN LIỆU & CÔNG THỨC
   const coffee = await prisma.ingredient.create({
-    data: { name: "Cà phê hạt Arabica", unit: "gram", stock: 5000 },
+    data: { name: "Cà phê hạt Arabica", nameKey: "Cà phê hạt Arabica".toLowerCase(), unit: "G", stock: 5000 },
   });
   const milk = await prisma.ingredient.create({
-    data: { name: "Sữa tươi", unit: "ml", stock: 10000 },
+    data: { name: "Sữa tươi", nameKey: "Sữa tươi".toLowerCase(), unit: "ML", stock: 10000 },
   });
 
   // Lúc này mới tìm Size, vì Sản phẩm đã được tạo ở Bước 5
   const sampleSize = await prisma.productSizePrice.findFirst();
   if (sampleSize) {
-    await prisma.recipe.createMany({
+    await prisma.recipeIngredient.createMany({
       data: [
         {
-          productSizePriceId: sampleSize.id,
+          productId: sampleSize.productId,
+          size: sampleSize.size,
           ingredientId: coffee.id,
-          quantityRequired: 20,
+          quantity: 20,
         },
         {
-          productSizePriceId: sampleSize.id,
+          productId: sampleSize.productId,
+          size: sampleSize.size,
           ingredientId: milk.id,
-          quantityRequired: 50,
+          quantity: 50,
         },
       ],
     });

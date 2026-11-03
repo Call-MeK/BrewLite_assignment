@@ -5,13 +5,17 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { ApiError } from '@/lib/api-client';
+import { clearPendingOrder } from '@/lib/pending-order';
 import { cancelOrder, getOrder, orderStatusLabel, type OrderDetail } from '@/services/order.service';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 const date = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const cooldown = useRequestCooldown('POST', `/orders/${id}/cancel`);
+  const retryCooldown = useRequestCooldown('GET', `/orders/${id}`);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
@@ -40,12 +44,13 @@ export default function OrderDetailPage() {
   useEffect(() => { void loadOrder(); }, [loadOrder]);
 
   async function handleCancel() {
-    if (!order || busy || !window.confirm('Bạn muốn hủy đơn hàng này?')) return;
+    if (!order || busy || cooldown.blocked || !window.confirm('Bạn muốn hủy đơn hàng này?') || !cooldown.start()) return;
     setBusy(true);
     setError('');
     try {
       const result = await cancelOrder(order.id);
       setOrder((current) => current ? { ...current, status: result.status } : current);
+      if (result.status === 'CANCELLED') clearPendingOrder(localStorage, order.id);
       setMessage('Đã hủy đơn hàng.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Không thể hủy đơn hàng.');
@@ -60,7 +65,7 @@ export default function OrderDetailPage() {
       <h1 className="text-2xl font-black text-navy">Đăng nhập để xem đơn hàng</h1>
       <Link href="/login?next=%2Forders" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-primary px-5 font-semibold text-white">Đăng nhập</Link>
     </div> : loading ? <p role="status" className="rounded-2xl bg-white p-8 text-content-secondary">Đang tải đơn hàng...</p> : !order ? <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800" role="alert">
-      {error || 'Không tìm thấy đơn hàng.'} <button type="button" onClick={() => void loadOrder()} className="ml-2 font-semibold underline">Thử lại</button>
+      {error || 'Không tìm thấy đơn hàng.'} <button type="button" disabled={retryCooldown.blocked} onClick={() => { if (retryCooldown.start()) void loadOrder(); }} className="ml-2 font-semibold underline">{retryCooldown.label || 'Thử lại'}</button>
     </div> : <>
       <div className="rounded-[2rem] bg-navy p-7 text-white sm:p-10">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-coffee-cream">Chi tiết đơn hàng</p>
@@ -95,7 +100,7 @@ export default function OrderDetailPage() {
           {(order.status === 'PENDING' || order.status === 'PAYMENT_FAILED') && <div className="mt-6 border-t border-border-light pt-5">
             <p className="text-sm text-content-secondary">Chọn ví điện tử hoặc thẻ nội địa tại cổng thanh toán mô phỏng.</p>
             <Link href={`/orders/${order.id}/payment`} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-white hover:bg-primary-hover"><CreditCard size={18} aria-hidden="true" /> Đến cổng thanh toán</Link>
-            <button type="button" onClick={() => void handleCancel()} disabled={busy} className="mt-3 min-h-11 w-full font-semibold text-red-700 hover:underline disabled:opacity-60">Hủy đơn hàng</button>
+            <button type="button" onClick={() => void handleCancel()} disabled={busy || cooldown.blocked} className="mt-3 min-h-11 w-full font-semibold text-red-700 hover:underline disabled:opacity-60">{cooldown.label || 'Hủy đơn hàng'}</button>
           </div>}
         </aside>
       </div>

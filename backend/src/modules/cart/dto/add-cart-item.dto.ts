@@ -1,11 +1,15 @@
 import { ProductSize } from '@prisma/client';
-import { ArrayMaxSize, ArrayUnique, IsArray, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class AddCartItemDto {
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(36)
   cartId: string;
 
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(36)
   productId: string;
 
   @IsInt()
@@ -21,5 +25,7 @@ export class AddCartItemDto {
   @ArrayMaxSize(3)
   @ArrayUnique()
   @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  @MaxLength(36, { each: true })
   toppingIds?: string[];
 }

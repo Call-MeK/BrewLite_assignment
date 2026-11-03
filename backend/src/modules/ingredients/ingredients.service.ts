@@ -1,3 +1,4 @@
+import { IngredientUnit } from "@prisma/client";
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service"; // Chỉnh lại đường dẫn nếu cần
 
@@ -7,13 +8,14 @@ export class IngredientsService {
 
   async create(data: {
     name: string;
-    unit: string;
+    unit: IngredientUnit;
     stock: number;
     price: number;
   }) {
     return this.prisma.ingredient.create({
       data: {
         name: data.name,
+        nameKey: data.name.toLowerCase(),
         unit: data.unit,
         stock: data.stock,
         price: data.price || 0,
@@ -33,11 +35,11 @@ export class IngredientsService {
 
   async update(
     id: string,
-    data: { name?: string; unit?: string; stock?: number; price?: number },
+    data: { name?: string; unit?: IngredientUnit; stock?: number; price?: number },
   ) {
     return this.prisma.ingredient.update({
       where: { id },
-      data,
+      data: { ...data, ...(data.name !== undefined ? { nameKey: data.name.toLowerCase() } : {}) },
     });
   }
 
