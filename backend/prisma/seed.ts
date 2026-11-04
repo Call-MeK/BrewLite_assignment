@@ -1,4 +1,4 @@
-import { PrismaClient, ProductSize } from "@prisma/client";
+import { PrismaClient, ProductSize, UserRole } from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import { additionalMenuItems } from "./additional-menu-items";
 import { ingredientSeeds } from "./ingredients-data";
@@ -29,17 +29,30 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.ingredient.deleteMany();
 
-  // 2. Tạo User Demo
+  // 2. Tạo User Demo & Admin Demo
   const passwordHash = await bcrypt.hash("Demo@12345", 10);
   const demoUser = await prisma.user.create({
     data: {
       email: "demo@brewlite.test",
       passwordHash,
       fullName: "Khách hàng Demo",
+      role: UserRole.CUSTOMER,
       loyaltyPoints: 120, // Có sẵn 120 điểm loyalty
     },
   });
   console.log(`✅ Đã tạo user demo: ${demoUser.email} / Mật khẩu: Demo@12345`);
+
+  const adminPasswordHash = await bcrypt.hash("Admin@12345", 10);
+  const adminUser = await prisma.user.create({
+    data: {
+      email: "admin@brewlite.test",
+      passwordHash: adminPasswordHash,
+      fullName: "Quản trị viên Demo",
+      role: UserRole.ADMIN,
+      loyaltyPoints: 0,
+    },
+  });
+  console.log(`✅ Đã tạo user admin: ${adminUser.email} / Mật khẩu: Admin@12345`);
 
   // 3. Tạo Categories
   const catCoffee = await prisma.category.create({

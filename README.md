@@ -97,3 +97,44 @@ Chạy hai lệnh sau trong hai terminal riêng:
 ```
 
 Mở `http://localhost:3000` cho giao diện hoặc `http://localhost:4000/api/v1/products` cho API. Dùng `.\stop-db.cmd` để dừng PostgreSQL do Docker Compose quản lý. Các tệp `.env`, `backend/.env` và `frontend/.env.local` chứa cấu hình cục bộ và không được commit.
+
+## Cách chạy đơn giản nhất bằng Docker (khuyên dùng cho demo)
+
+Chỉ cần **Docker Desktop** đang mở — không cần chạy npm/terminal riêng.
+
+```powershell
+# 1. Tạo cấu hình (chỉ chạy 1 lần)
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+
+# 2. Build + chạy tất cả trong Docker
+docker compose up --build -d
+```
+
+Mở **http://localhost:3000** là dùng được.
+
+Khi muốn dừng / chạy lại:
+
+```powershell
+docker compose down        # dừng cả 3 service
+docker compose up -d       # chạy lại (không cần --build nếu không đổi code)
+docker compose logs -f     # xem log nếu có lỗi
+```
+
+Lưu ý:
+
+- Lần đầu `--build` sẽ mất vài phút để tải image Postgres + build NestJS/Next.js. Lần sau chạy `up -d` là nhanh.
+- Nếu sửa code trong `backend/` hoặc `frontend/`, muốn thấy kết quả thì chạy lại `docker compose up --build -d`.
+- Dữ liệu DB được lưu trong volume `brewlite_postgres_data` nên `down`/`up` không mất dữ liệu.
+- Muốn xoá sạch dữ liệu: `docker compose down -v`.
+
+## Tài khoản test
+
+Sau khi chạy `npm run prisma:seed` (hoặc `npx prisma db seed` trong `backend/`), hệ thống có sẵn 2 tài khoản trong `backend/prisma/seed.ts`:
+
+| Vai trò | Email | Mật khẩu | Ghi chú |
+|---|---|---|---|
+| Khách hàng | `demo@brewlite.test` | `Demo@12345` | Có sẵn 120 điểm loyalty, đặt hàng bình thường |
+| Quản trị viên | `admin@brewlite.test` | `Admin@12345` | Truy cập trang Admin (`/admin/users`, quản lý sản phẩm, đơn hàng, kho) |
+
+> **Lưu ý:** Đây là tài khoản demo công khai chỉ dùng cho môi trường local/test. Không dùng mật khẩu này trên production. Nếu muốn đổi mật khẩu, hãy đăng nhập rồi đổi trong phần hồ sơ cá nhân.
