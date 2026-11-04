@@ -19,6 +19,9 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node -r dotenv/config prisma/seed.ts",
     "menu:add": "ts-node -r dotenv/config prisma/add-menu-items.ts",
+    "ingredients:add": "ts-node -r dotenv/config prisma/add-ingredients.ts",
+    "recipes:add": "ts-node -r dotenv/config prisma/add-recipes.ts",
+    "stock-import:add": "ts-node -r dotenv/config prisma/add-stock-import.ts",
     "toppings:add": "ts-node -r dotenv/config prisma/add-toppings.ts"
   },
   "dependencies": {

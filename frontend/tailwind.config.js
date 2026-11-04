@@ -8,37 +8,74 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        paper: {
+          DEFAULT: '#F3EEE3',
+          deep: '#E8E0D0',
+        },
+        ink: {
+          DEFAULT: '#17150F',
+          soft: '#3A352B',
+        },
         navy: {
-          DEFAULT: '#2E211B',
-          dark: '#2E211B',
+          DEFAULT: '#17150F',
+          dark: '#17150F',
         },
         primary: {
-          DEFAULT: '#8A4525',
-          hover: '#6F351D',
-          light: '#F7E8DA',
+          DEFAULT: '#1C4E63',
+          hover: '#133B4B',
+          light: '#E2EDF1',
+        },
+        accent: {
+          DEFAULT: '#E39B2D',
+          soft: '#F6E2B8',
         },
         success: {
-          DEFAULT: '#2F8061',
-          light: '#E7F3EC',
+          DEFAULT: '#2F6B4F',
+          light: '#E3F0E8',
         },
         coffee: {
-          cream: '#F3E4D1',
+          cream: '#F0E3C9',
         },
         surface: {
           DEFAULT: '#FFFFFF',
-          secondary: '#FAF6F0',
+          secondary: '#FAF7F0',
         },
         content: {
-          primary: '#2E211B',
-          secondary: '#6B5A50',
+          primary: '#17150F',
+          secondary: '#5E574C',
         },
         border: {
-          light: '#E7D8CA',
+          light: '#DCD3C1',
         },
         danger: {
-          DEFAULT: '#B42318',
-          light: '#FFF0ED',
+          DEFAULT: '#A62F24',
+          light: '#FBEDE9',
         },
+      },
+      fontFamily: {
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        ticket: '3px',
+      },
+      boxShadow: {
+        ticket: '5px 5px 0 0 rgba(23, 21, 15, 0.10)',
+        'ticket-hover': '8px 8px 0 0 rgba(23, 21, 15, 0.14)',
+      },
+      keyframes: {
+        rise: {
+          '0%': { opacity: '0', transform: 'translateY(14px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        stamp: {
+          '0%': { opacity: '0', transform: 'scale(1.06) rotate(-2deg)' },
+          '100%': { opacity: '1', transform: 'scale(1) rotate(-2deg)' },
+        },
+      },
+      animation: {
+        rise: 'rise .55s cubic-bezier(.2,.7,.3,1) both',
+        stamp: 'stamp .7s cubic-bezier(.2,.7,.3,1) both',
       },
     },
   },

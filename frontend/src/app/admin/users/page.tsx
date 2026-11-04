@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck, Users } from 'lucide-react';
-import { AdminNav } from '@/components/admin-nav';
 import { useRequestCooldown } from '@/components/use-request-cooldown';
 import { ApiError } from '@/lib/api-client';
 import { getManagedUsers, getUserAccess, setUserRole, userRoleLabels, type UserRole, type UsersResult } from '@/services/user-management.service';
 
-const control = 'min-h-11 rounded-xl border border-border-light bg-white px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
-const button = `${control} inline-flex items-center justify-center gap-2 font-semibold text-primary hover:bg-primary-light disabled:cursor-not-allowed`;
+const control = 'min-h-11 rounded-ticket border border-ink/20 bg-white px-3 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
+const button = `${control} inline-flex items-center justify-center gap-2 font-semibold text-primary hover:border-ink hover:bg-paper disabled:cursor-not-allowed`;
 const date = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
 const errorMessage = (error: unknown) => error instanceof ApiError && error.statusCode === 401 ? 'Vui lòng đăng nhập để quản lý khách hàng.'
   : error instanceof ApiError && error.statusCode === 403 ? 'Tài khoản chưa được cấp quyền quản trị.'
@@ -78,16 +77,15 @@ export default function UserManagementPage() {
   }
 
   const pages = Math.max(1, result?.pagination.totalPages ?? 1);
-  return <div className="space-y-6">
-    <AdminNav />
-    <section className="rounded-[2rem] bg-navy p-7 text-white sm:p-9">
-      <div className="flex items-center gap-2 text-sm font-semibold text-coffee-cream"><ShieldCheck size={18} /> Quản trị BrewLite</div>
-      <h1 className="mt-3 text-3xl font-black">Quản lý khách hàng</h1>
-      <p className="mt-3 text-sm text-coffee-cream">Xem tài khoản khách hàng và quản lý quyền truy cập.</p>
-    </section>
-    {error && <p role="alert" className="rounded-xl border border-danger/20 bg-danger-light p-4 text-sm text-danger">{error}</p>}
-    {message && <p role="status" className="rounded-xl bg-success-light p-4 text-sm text-success">{message}</p>}
-    <section aria-labelledby="users-title" className="overflow-hidden rounded-2xl border border-border-light bg-white">
+  return <div className="mx-auto max-w-6xl space-y-6">
+    <header className="border-b-[1.5px] border-ink pb-5">
+      <p className="kicker">Sổ quản trị · Khách hàng</p>
+      <h1 className="mt-2 flex items-center gap-2 text-3xl font-extrabold tracking-[-0.03em] text-ink sm:text-4xl"><ShieldCheck size={26} aria-hidden="true" /> Quản lý khách hàng</h1>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-content-secondary">Xem tài khoản khách hàng và quản lý quyền truy cập.</p>
+    </header>
+    {error && <p role="alert" className="rounded-ticket border-l-4 border-danger bg-danger-light p-4 text-sm text-danger">{error}</p>}
+    {message && <p role="status" className="rounded-ticket border-l-4 border-success bg-success-light p-4 text-sm text-success">{message}</p>}
+    <section aria-labelledby="users-title" className="ticket overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6"><h2 id="users-title" className="flex items-center gap-2 font-bold"><Users size={20} className="text-primary" /> Danh sách tài khoản <span className="text-sm font-normal text-content-secondary">({result?.pagination.total ?? 0})</span></h2>
         <button type="button" disabled={loading || Boolean(saving) || refresh.blocked} onClick={() => { if (refresh.start()) setReload(value => value + 1); }} className={button}><RefreshCw size={16} /> {refresh.label || 'Làm mới'}</button>
       </div>
@@ -97,15 +95,15 @@ export default function UserManagementPage() {
       </div>
       <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm">
         <caption className="sr-only">Danh sách khách hàng và quyền truy cập</caption>
-        <thead className="border-y border-border-light bg-surface-secondary text-xs text-content-secondary"><tr>{['Khách hàng', 'Quyền', 'Điểm tích lũy', 'Đơn hàng', 'Ngày tham gia', 'Phân quyền'].map(label => <th key={label} scope="col" className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead>
-        <tbody className="divide-y divide-border-light">{result?.items.map(user => <tr key={user.id} className="hover:bg-surface-secondary/60">
+        <thead className="border-b border-ink/15 bg-paper-deep/50 text-[11px] uppercase tracking-[0.12em] text-content-secondary"><tr>{['Khách hàng', 'Quyền', 'Điểm tích lũy', 'Đơn hàng', 'Ngày tham gia', 'Phân quyền'].map(label => <th key={label} scope="col" className="px-5 py-3 font-semibold">{label}</th>)}</tr></thead>
+        <tbody className="divide-y divide-ink/10">{result?.items.map(user => <tr key={user.id} className="transition-colors hover:bg-paper/60">
           <td className="px-5 py-4"><p className="font-semibold">{user.fullName || 'Chưa cập nhật tên'} {user.id === myId && <span className="text-xs text-primary">(Bạn)</span>}</p><p className="mt-1 text-xs text-content-secondary">{user.email}</p></td>
-          <td className="px-5 py-4"><span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${user.role === 'ADMIN' ? 'bg-primary-light text-primary' : 'bg-surface-secondary text-content-secondary'}`}>{userRoleLabels[user.role]}</span></td>
+          <td className="px-5 py-4"><span className={`whitespace-nowrap rounded-ticket border px-2.5 py-1 text-xs font-semibold ${user.role === 'ADMIN' ? 'border-primary/30 bg-primary-light text-primary' : 'border-ink/15 bg-paper text-content-secondary'}`}>{userRoleLabels[user.role]}</span></td>
           <td className="px-5 py-4 tabular-nums">{user.loyaltyPoints.toLocaleString('vi-VN')}</td><td className="px-5 py-4 tabular-nums">{user.orderCount}</td><td className="whitespace-nowrap px-5 py-4 text-xs text-content-secondary">{date(user.createdAt)}</td>
           <td className="px-5 py-4"><select aria-label={`Quyền của ${user.email}`} title={user.id === myId ? 'Không thể tự thay đổi quyền của mình' : undefined} value={user.role} disabled={user.id === myId || Boolean(saving) || writes.blocked} onChange={event => void changeRole(user.id, event.target.value as UserRole)} className={control}><option value="CUSTOMER">Khách hàng</option><option value="ADMIN">Quản trị viên</option></select>{saving === user.id && <p className="mt-1 text-xs text-content-secondary">Đang lưu…</p>}</td>
         </tr>)}{!result?.items.length && <tr><td colSpan={6} role="status" className="px-5 py-12 text-center text-content-secondary">{loading ? 'Đang tải khách hàng…' : error ? 'Chưa tải được danh sách khách hàng.' : 'Không tìm thấy khách hàng phù hợp.'}</td></tr>}</tbody>
       </table></div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-light px-5 py-4"><p aria-live="polite" className="text-xs text-content-secondary">{result ? `${result.pagination.total} tài khoản · Trang ${page}/${pages}` : 'Chưa có dữ liệu hiển thị'}</p><nav aria-label="Phân trang khách hàng" className="flex gap-2"><button type="button" aria-label="Trang khách hàng trước" disabled={loading || !result || page <= 1} onClick={() => setPage(page - 1)} className={button}><ChevronLeft size={18} /></button><button type="button" aria-label="Trang khách hàng sau" disabled={loading || !result || page >= pages} onClick={() => setPage(page + 1)} className={button}><ChevronRight size={18} /></button></nav></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 px-5 py-4"><p aria-live="polite" className="text-xs text-content-secondary">{result ? `${result.pagination.total} tài khoản · Trang ${page}/${pages}` : 'Chưa có dữ liệu hiển thị'}</p><nav aria-label="Phân trang khách hàng" className="flex gap-2"><button type="button" aria-label="Trang khách hàng trước" disabled={loading || !result || page <= 1} onClick={() => setPage(page - 1)} className={button}><ChevronLeft size={18} /></button><button type="button" aria-label="Trang khách hàng sau" disabled={loading || !result || page >= pages} onClick={() => setPage(page + 1)} className={button}><ChevronRight size={18} /></button></nav></div>
     </section>
     <p className="text-xs text-content-secondary">Quản trị viên có thể quản lý khách hàng và thanh toán. Bạn không thể tự thay đổi quyền của mình.</p>
   </div>;

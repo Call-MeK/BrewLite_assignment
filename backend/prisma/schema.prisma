@@ -37,6 +37,11 @@ enum PaymentSource {
   ZALOPAY_SANDBOX
 }
 
+enum RefundStatus {
+  NONE
+  MANUAL_REQUIRED
+}
+
 enum ProductSize {
   S
   M
@@ -47,6 +52,7 @@ enum LoyaltyTransactionType {
   EARNED
   SPENT
   REFUNDED
+  REVERSED
 }
 
 enum UserRole {
@@ -142,6 +148,7 @@ model Ingredient {
 
   recipeItems      RecipeIngredient[]
   orderIngredients OrderIngredient[]
+  stockImportItems StockImportItem[]
 
   @@map("ingredients")
 }
@@ -157,6 +164,37 @@ model RecipeIngredient {
   @@id([productId, size, ingredientId])
   @@index([ingredientId])
   @@map("recipe_ingredients")
+}
+
+model StockImport {
+  id           String   @id @default(cuid())
+  importNumber Int      @unique @default(autoincrement()) @map("import_number")
+  supplier     String?  @db.VarChar(120)
+  note         String?  @db.VarChar(500)
+  totalAmount  Decimal  @default(0) @map("total_amount") @db.Decimal(14, 0)
+  createdBy    String?  @map("created_by") @db.VarChar(160)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  items StockImportItem[]
+
+  @@index([createdAt])
+  @@map("stock_imports")
+}
+
+model StockImportItem {
+  id           String  @id @default(cuid())
+  importId     String  @map("import_id")
+  ingredientId String  @map("ingredient_id")
+  quantity     Float
+  unitPrice    Float   @map("unit_price")
+  lineTotal    Decimal @map("line_total") @db.Decimal(14, 0)
+
+  import     StockImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  ingredient Ingredient  @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@index([importId])
+  @@index([ingredientId])
+  @@map("stock_import_items")
 }
 
 model Topping {
@@ -198,6 +236,7 @@ model Order {
   userId         String      @map("user_id")
   promotionId    String?     @map("promotion_id")
   status         OrderStatus @default(PENDING)
+  refundStatus   RefundStatus @default(NONE) @map("refund_status")
   totalAmount    Decimal     @map("total_amount") @db.Decimal(12, 0) // Tạm tính trước giảm
   discountAmount Decimal     @default(0) @map("discount_amount") @db.Decimal(12, 0)
   finalAmount    Decimal     @map("final_amount") @db.Decimal(12, 0) // Tiền thực trả

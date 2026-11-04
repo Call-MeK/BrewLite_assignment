@@ -46,13 +46,16 @@ export class ZaloPaySandboxGateway {
     const appTime = payment.createdAt.getTime();
     const amount = Number(payment.amount);
     if (!Number.isSafeInteger(amount) || amount <= 0) throw new BadRequestException('Số tiền thanh toán không hợp lệ');
-    const result = await this.post('create', {
+    const body: Record<string, string> = {
       app_id: settings.appId, app_user: userId, app_trans_id: payment.providerOrderId,
       app_time: String(appTime), amount: String(amount), bank_code: '', embed_data: embed, item,
       expire_duration_seconds: '900', description: `BrewLite Sandbox - Thanh toán đơn #${orderNumber}`,
-      callback_url: settings.callback,
       mac: this.mac(settings.key1, [settings.appId, payment.providerOrderId, userId, amount, appTime, embed, item].join('|')),
-    });
+    };
+    // Callback is optional: without a public HTTPS URL the client polls the
+    // query endpoint instead (see the "Kiểm tra kết quả" button).
+    if (settings.callback) body.callback_url = settings.callback;
+    const result = await this.post('create', body);
     if (result.return_code === 2) return { accepted: false as const };
     if (result.return_code !== 1) throw new ServiceUnavailableException('Chưa xác định được kết quả tạo thanh toán ZaloPay');
     try {
@@ -127,13 +130,18 @@ export class ZaloPaySandboxGateway {
       if (this.config.get<string>('ZALOPAY_SANDBOX_ENABLED') !== 'true'
         || !['development', 'test'].includes(this.config.get<string>('NODE_ENV'))
         || !/^[1-9]\d{0,9}$/.test(appId) || !key1.trim() || !key2.trim()) throw new Error();
-      const callback = new URL(this.config.get<string>('ZALOPAY_CALLBACK_URL'));
+      const rawCallback = (this.config.get<string>('ZALOPAY_CALLBACK_URL') || '').trim();
+      let callback: string | null = null;
+      if (rawCallback) {
+        const parsed = new URL(rawCallback);
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.hash
+          || (parsed.port && parsed.port !== '443')) throw new Error();
+        callback = parsed.href;
+      }
       const redirect = new URL(this.config.get<string>('ZALOPAY_REDIRECT_URL'));
-      if (callback.protocol !== 'https:' || callback.username || callback.password || callback.hash
-        || (callback.port && callback.port !== '443')
-        || !['http:', 'https:'].includes(redirect.protocol) || redirect.username || redirect.password
+      if (!['http:', 'https:'].includes(redirect.protocol) || redirect.username || redirect.password
         || redirect.search || redirect.hash) throw new Error();
-      return { appId, key1, key2, callback: callback.href, redirect: redirect.href };
+      return { appId, key1, key2, callback, redirect: redirect.href };
     } catch {
       throw new ServiceUnavailableException('ZaloPay Sandbox chưa được bật hoặc cấu hình chưa đầy đủ');
     }

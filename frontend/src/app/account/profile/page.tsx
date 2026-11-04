@@ -85,43 +85,43 @@ export default function ProfilePage() {
   }
 
   return <section className="mx-auto max-w-4xl space-y-6">
-    <div className="rounded-[2rem] bg-navy p-7 text-white sm:p-10">
-      <p className="text-sm font-bold uppercase tracking-[0.2em] text-coffee-cream">Tài khoản BrewLite</p>
-      <h1 className="mt-3 text-3xl font-black sm:text-4xl">Hồ sơ của bạn</h1>
-      <p className="mt-3 text-[#f0e3d8]">Xem thông tin cá nhân và cập nhật tên, email của bạn.</p>
-    </div>
+    <header className="border-b-[1.5px] border-ink pb-4">
+      <p className="kicker">Tài khoản BrewLite</p>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-ink sm:text-4xl">Hồ sơ của bạn</h1>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-content-secondary">Xem thông tin cá nhân và cập nhật tên, email của bạn.</p>
+    </header>
 
-    {unauthorized ? <div className="rounded-2xl border border-border-light bg-white p-8 text-center">
+    {unauthorized ? <div className="ticket p-8 text-center">
       <p className="text-content-secondary">Đăng nhập để xem và chỉnh sửa hồ sơ.</p>
-      <Link href="/login" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-primary px-5 font-semibold text-white">Đăng nhập</Link>
-    </div> : loading ? <p role="status" className="rounded-2xl bg-white p-8 text-content-secondary">Đang tải hồ sơ...</p> : !profile ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
+      <Link href="/login" className="btn-primary mt-5">Đăng nhập</Link>
+    </div> : loading ? <p role="status" className="ticket p-8 text-content-secondary">Đang tải hồ sơ...</p> : !profile ? <div role="alert" className="rounded-ticket border-l-4 border-danger bg-danger-light p-6 text-danger">
       {error || 'Không thể tải hồ sơ.'} <button type="button" disabled={retryCooldown.blocked} onClick={() => { if (retryCooldown.start()) window.location.reload(); }} className="font-semibold underline">{retryCooldown.label || 'Thử lại'}</button>
     </div> : <div className="grid gap-6 md:grid-cols-[1fr_250px]">
-      <div className="rounded-2xl border border-border-light bg-white p-6 shadow-sm sm:p-8">
-        <h2 className="text-xl font-bold text-navy">Thông tin cá nhân</h2>
+      <div className="ticket p-6 sm:p-8">
+        <h2 className="font-display text-xl font-bold text-navy">Thông tin cá nhân</h2>
         <p className="mt-1 text-sm text-content-secondary">Email cũng được dùng để đăng nhập.</p>
         <form onSubmit={(event) => void saveProfile(event)} className="mt-6 space-y-5">
           <label className="block text-sm font-semibold text-navy">Họ và tên
-            <input value={fullName} maxLength={100} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required className="mt-2 block min-h-12 w-full rounded-xl border border-border-light px-4 font-normal text-content-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <input value={fullName} maxLength={100} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required className="field mt-2 font-normal" />
           </label>
           <label className="block text-sm font-semibold text-navy">Email
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required className="mt-2 block min-h-12 w-full rounded-xl border border-border-light px-4 font-normal text-content-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required className="field mt-2 font-normal" />
           </label>
           {email.trim().toLowerCase() !== profile.email && <label className="block text-sm font-semibold text-navy">Mật khẩu hiện tại để đổi email
-            <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" minLength={6} required className="mt-2 block min-h-12 w-full rounded-xl border border-border-light px-4 font-normal text-content-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" minLength={6} required className="field mt-2 font-normal" />
           </label>}
-          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-          {message && <p role="status" className="rounded-xl bg-success-light p-3 text-sm text-success">{message}</p>}
-          <button type="submit" disabled={saving || cooldown.blocked} className="min-h-12 rounded-xl bg-primary px-6 font-bold text-white hover:bg-primary-hover disabled:opacity-60">{saving ? 'Đang lưu...' : cooldown.label || 'Lưu thay đổi'}</button>
+          {error && <p role="alert" className="rounded-ticket border-l-4 border-danger bg-danger-light p-3 text-sm text-danger">{error}</p>}
+          {message && <p role="status" className="rounded-ticket border-l-4 border-success bg-success-light p-3 text-sm text-success">{message}</p>}
+          <button type="submit" disabled={saving || cooldown.blocked} className="btn-primary px-6 disabled:opacity-60">{saving ? 'Đang lưu...' : cooldown.label || 'Lưu thay đổi'}</button>
         </form>
       </div>
-      <aside className="h-fit rounded-2xl border border-border-light bg-white p-6 shadow-sm">
+      <aside className="ticket h-fit p-6">
         <CircleUserRound size={36} className="text-primary" aria-hidden="true" />
         <h2 className="mt-4 font-bold text-navy">{profile.fullName || profile.email}</h2>
         <p className="mt-1 break-all text-sm text-content-secondary">{profile.email}</p>
-        <p className="mt-5 rounded-xl bg-primary-light p-3 text-sm font-semibold text-primary">Điểm tích lũy: {profile.loyaltyPoints}<span className="mt-1 block text-xs font-normal text-content-secondary">10 điểm giảm 1.000đ khi đặt hàng</span></p>
-        <Link href="/account/security" className="mt-5 block min-h-11 rounded-xl border border-border-light px-4 py-3 text-center text-sm font-semibold text-navy hover:bg-surface-secondary">Đổi mật khẩu</Link>
-        <Link href="/orders" className="mt-2 block min-h-11 rounded-xl border border-border-light px-4 py-3 text-center text-sm font-semibold text-primary hover:underline">Lịch sử đơn hàng</Link>
+        <p className="mt-5 rounded-ticket border border-primary/15 bg-primary-light p-3 text-sm font-semibold text-primary">Điểm tích lũy: <span className="price">{profile.loyaltyPoints}</span><span className="mt-1 block text-xs font-normal text-content-secondary">10 điểm giảm 1.000đ khi đặt hàng</span></p>
+        <Link href="/account/security" className="btn-quiet mt-5 w-full text-sm">Đổi mật khẩu</Link>
+        <Link href="/orders" className="mt-2 flex min-h-11 items-center justify-center text-sm font-semibold text-primary hover:underline">Lịch sử đơn hàng</Link>
       </aside>
     </div>}
   </section>;

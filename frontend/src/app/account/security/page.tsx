@@ -65,8 +65,8 @@ export default function SecurityPage() {
   if (hasToken === null) return null;
   if (!hasToken) {
     return (
-      <section className="mx-auto max-w-md rounded-2xl border border-border-light bg-white p-6 text-center shadow-sm">
-        <h1 className="text-2xl font-bold text-navy">Bảo mật tài khoản</h1>
+      <section className="ticket mx-auto max-w-md p-6 text-center">
+        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-navy">Bảo mật tài khoản</h1>
         <p className="mt-3 text-content-secondary">Bạn cần đăng nhập để đổi mật khẩu.</p>
         <Link href="/login" className="mt-5 inline-block font-semibold text-primary hover:underline">
           Đăng nhập
@@ -76,8 +76,8 @@ export default function SecurityPage() {
   }
 
   return (
-    <section className="mx-auto max-w-md rounded-2xl border border-border-light bg-white p-6 shadow-sm sm:p-8">
-      <h1 className="text-2xl font-bold text-navy">Đổi mật khẩu</h1>
+    <section className="ticket mx-auto max-w-md p-6 sm:p-8">
+      <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-navy">Đổi mật khẩu</h1>
       <p className="mt-2 text-sm text-content-secondary">
         Sau khi đổi mật khẩu, các token cũ sẽ không còn truy cập được tài khoản.
       </p>
@@ -91,7 +91,7 @@ export default function SecurityPage() {
             onChange={(event) => setCurrentPassword(event.target.value)}
             minLength={6}
             required
-            className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
+            className="field mt-1"
           />
         </label>
         <label className="block text-sm font-medium text-navy">
@@ -103,7 +103,7 @@ export default function SecurityPage() {
             onChange={(event) => setNewPassword(event.target.value)}
             minLength={6}
             required
-            className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
+            className="field mt-1"
           />
         </label>
         <label className="block text-sm font-medium text-navy">
@@ -115,15 +115,15 @@ export default function SecurityPage() {
             onChange={(event) => setConfirmPassword(event.target.value)}
             minLength={6}
             required
-            className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
+            className="field mt-1"
           />
         </label>
-        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-        {message && <p role="status" className="text-sm text-green-700">{message}</p>}
+        {error && <p role="alert" className="rounded-ticket border-l-4 border-danger bg-danger-light p-3 text-sm text-danger">{error}</p>}
+        {message && <p role="status" className="rounded-ticket border-l-4 border-success bg-success-light p-3 text-sm text-success">{message}</p>}
         <button
           type="submit"
           disabled={isSubmitting || cooldown.blocked}
-          className="w-full rounded-lg bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="btn-primary w-full disabled:opacity-60"
         >
           {isSubmitting ? 'Đang xử lý...' : cooldown.label || 'Đổi mật khẩu'}
         </button>

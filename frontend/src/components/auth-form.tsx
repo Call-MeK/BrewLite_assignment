@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fetchApi } from '@/lib/api-client';
@@ -69,83 +70,108 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   }
 
   return (
-    <section className="mx-auto max-w-md rounded-2xl border border-border-light bg-white p-6 shadow-sm sm:p-8">
-      <h1 className="text-2xl font-bold text-navy">
-        {isRegister ? 'Tạo tài khoản BrewLite' : 'Đăng nhập BrewLite'}
-      </h1>
-      <p className="mt-2 text-sm text-content-secondary">
-        {isRegister
-          ? 'Tạo tài khoản để đặt đồ uống và tích lũy điểm.'
-          : 'Đăng nhập để tiếp tục đặt đồ uống.'}
-      </p>
+    <section className="mx-auto grid max-w-4xl overflow-hidden rounded-ticket border-[1.5px] border-ink bg-white md:grid-cols-[0.9fr_1.1fr]">
+      <div className="relative hidden min-h-[560px] md:block">
+        <Image
+          src="/images/hero/phin-coffee.jpg"
+          alt="Phin cà phê nhỏ giọt"
+          fill
+          sizes="360px"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 right-0 p-6 text-paper">
+          <p className="font-display text-2xl font-extrabold tracking-[-0.02em]">Đặt trước, tới lấy.</p>
+          <p className="mt-1 max-w-[16rem] text-sm leading-6 text-paper/80">
+            Mỗi ly được pha sau khi bạn xác nhận, nên tới quầy là có ngay.
+          </p>
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        {isRegister && (
-          <label className="block text-sm font-medium text-navy">
-            Họ và tên
+      <div className="p-6 sm:p-9">
+        <p className="kicker">{isRegister ? 'Tài khoản mới' : 'Chào mừng trở lại'}</p>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.02em] text-ink sm:text-3xl">
+          {isRegister ? 'Tạo tài khoản BrewLite' : 'Đăng nhập BrewLite'}
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-content-secondary">
+          {isRegister
+            ? 'Tạo tài khoản để đặt đồ uống và tích lũy điểm.'
+            : 'Đăng nhập để tiếp tục đặt đồ uống.'}
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {isRegister && (
+            <label className="block text-sm font-medium text-ink">
+              Họ và tên
+              <input
+                className="field mt-1.5"
+                autoComplete="name"
+                maxLength={100}
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                required
+              />
+            </label>
+          )}
+          <label className="block text-sm font-medium text-ink">
+            Email
             <input
-              className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
-              autoComplete="name"
-              maxLength={100}
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
+              className="field mt-1.5"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
             />
           </label>
-        )}
-        <label className="block text-sm font-medium text-navy">
-          Email
-          <input
-            className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </label>
-        <label className="block text-sm font-medium text-navy">
-          Mật khẩu
-          <input
-            className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
-            type="password"
-            autoComplete={isRegister ? 'new-password' : 'current-password'}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={6}
-            required
-          />
-        </label>
-        {isRegister && (
-          <label className="block text-sm font-medium text-navy">
-            Xác nhận mật khẩu
+          <label className="block text-sm font-medium text-ink">
+            Mật khẩu
             <input
-              className="mt-1 block w-full rounded-lg border border-border-light px-3 py-2 text-content-primary outline-none focus:border-primary"
+              className="field mt-1.5"
               type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
               minLength={6}
               required
             />
           </label>
-        )}
-        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-        <button
-          type="submit"
-          disabled={isSubmitting || cooldown.blocked}
-          className="w-full rounded-lg bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
-        >
-          {isSubmitting ? 'Đang xử lý...' : cooldown.label || (isRegister ? 'Tạo tài khoản' : 'Đăng nhập')}
-        </button>
-      </form>
+          {isRegister && (
+            <label className="block text-sm font-medium text-ink">
+              Xác nhận mật khẩu
+              <input
+                className="field mt-1.5"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                minLength={6}
+                required
+              />
+            </label>
+          )}
 
-      <p className="mt-5 text-center text-sm text-content-secondary">
-        {isRegister ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}{' '}
-        <Link href={`${isRegister ? '/login' : '/register'}${returnPath !== '/' ? `?next=${encodeURIComponent(returnPath)}` : ''}`} className="font-semibold text-primary hover:underline">
-          {isRegister ? 'Đăng nhập' : 'Đăng ký'}
-        </Link>
-      </p>
+          {error && (
+            <p role="alert" className="rounded-ticket border-l-4 border-danger bg-danger-light px-3 py-2 text-sm text-danger">
+              {error}
+            </p>
+          )}
+
+          <button type="submit" disabled={isSubmitting || cooldown.blocked} className="btn-primary w-full disabled:opacity-50">
+            {isSubmitting ? 'Đang xử lý...' : cooldown.label || (isRegister ? 'Tạo tài khoản' : 'Đăng nhập')}
+          </button>
+        </form>
+
+        <p className="mt-5 border-t border-dashed border-ink/25 pt-4 text-sm text-content-secondary">
+          {isRegister ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}{' '}
+          <Link
+            href={`${isRegister ? '/login' : '/register'}${returnPath !== '/' ? `?next=${encodeURIComponent(returnPath)}` : ''}`}
+            className="font-semibold text-primary hover:underline"
+          >
+            {isRegister ? 'Đăng nhập' : 'Đăng ký'}
+          </Link>
+        </p>
+      </div>
     </section>
   );
 }

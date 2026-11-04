@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, BookOpen, X } from "lucide-react";
+import { BookOpen, Plus, Trash2, X } from "lucide-react";
 import {
   getAllProducts,
   createProduct,
@@ -12,10 +12,12 @@ import {
 } from "@/services/product.service";
 import { ingredientsService } from "@/services/ingredients.service";
 
+const smallButton = "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-ticket border border-ink/25 bg-white px-3 text-xs font-semibold text-ink transition-colors hover:border-ink hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [ingredients, setIngredients] = useState<any[]>([]); // Danh sách nguyên liệu thật
+  const [ingredients, setIngredients] = useState<any[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,12 +26,10 @@ export default function AdminProductsPage() {
     basePrice: 0,
   });
 
-  // States cho Modal Công thức (Recipe)
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [recipeItems, setRecipeItems] = useState<any[]>([]); // Chứa công thức thật
+  const [recipeItems, setRecipeItems] = useState<any[]>([]);
 
-  // State cho form nhập định lượng
   const [selectedIngredientId, setSelectedIngredientId] = useState("");
   const [quantity, setQuantity] = useState("");
 
@@ -78,23 +78,18 @@ export default function AdminProductsPage() {
     }
   };
 
-  // --- XỬ LÝ CÔNG THỨC ---
   const openRecipeModal = async (product: any) => {
     setSelectedProduct(product);
     setIsRecipeModalOpen(true);
-    setRecipeItems([]); // Clear cũ
+    setRecipeItems([]);
     try {
       const data = await getProductRecipe(product.id);
-
-      // SỬA ĐOẠN NÀY: Kiểm tra an toàn trước khi gán
       if (Array.isArray(data)) {
         setRecipeItems(data);
       } else if (data && Array.isArray(data.data)) {
-        // Bóc thêm một lớp data nếu Backend bọc lồng
         setRecipeItems(data.data);
       } else {
-        setRecipeItems([]); // Nếu lỗi, gán mảng rỗng để không bị sập trang
-        console.log("Dữ liệu trả về không đúng định dạng mảng:", data);
+        setRecipeItems([]);
       }
     } catch (error) {
       console.error("Lỗi tải công thức", error);
@@ -105,14 +100,8 @@ export default function AdminProductsPage() {
     if (!selectedIngredientId || !quantity)
       return alert("Vui lòng chọn nguyên liệu và nhập số lượng");
     try {
-      await addRecipeItem(
-        selectedProduct.id,
-        selectedIngredientId,
-        Number(quantity),
-      );
-
+      await addRecipeItem(selectedProduct.id, selectedIngredientId, Number(quantity));
       const data = await getProductRecipe(selectedProduct.id);
-
       if (Array.isArray(data)) {
         setRecipeItems(data);
       } else if (data && Array.isArray(data.data)) {
@@ -120,7 +109,6 @@ export default function AdminProductsPage() {
       } else {
         setRecipeItems([]);
       }
-
       setQuantity("");
       setSelectedIngredientId("");
     } catch (error) {
@@ -128,22 +116,13 @@ export default function AdminProductsPage() {
     }
   };
   const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        "Bạn có chắc chắn muốn xóa sản phẩm này? Toàn bộ công thức đi kèm cũng sẽ bị xóa.",
-      )
-    )
-      return;
+    if (!confirm("Bạn có chắc chắn muốn xóa sản phẩm này? Toàn bộ công thức đi kèm cũng sẽ bị xóa.")) return;
 
     try {
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
-      const res = await fetch(`${API_URL}/products/${id}`, {
-        method: "DELETE",
-      });
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+      const res = await fetch(`${API_URL}/products/${id}`, { method: "DELETE" });
 
       if (res.ok) {
-        // Lọc bỏ sản phẩm vừa xóa khỏi danh sách hiện tại trên giao diện
         setProducts(products.filter((item) => item.id !== id));
       } else {
         alert("Có lỗi xảy ra khi xóa sản phẩm.");
@@ -155,282 +134,151 @@ export default function AdminProductsPage() {
   const handleDeleteRecipe = async (ingredientId: string) => {
     try {
       await removeRecipeItem(selectedProduct.id, ingredientId);
-      setRecipeItems(
-        recipeItems.filter((item) => item.ingredientId !== ingredientId),
-      );
+      setRecipeItems(recipeItems.filter((item) => item.ingredientId !== ingredientId));
     } catch (error) {
       alert("Lỗi xóa nguyên liệu");
     }
   };
 
+  const cost = recipeItems.reduce((sum, item) => sum + item.quantity * (Number(item.ingredient?.price) || 0), 0);
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-black text-slate-800">Quản lý Sản phẩm</h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-[#A07049] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#8b5e3c] transition shadow-md flex items-center gap-2"
-        >
-          <Plus size={18} /> Thêm món mới
+    <div className="mx-auto max-w-6xl space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b-[1.5px] border-ink pb-5">
+        <div>
+          <p className="kicker">Sổ quản trị · Thực đơn</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-ink sm:text-4xl">Quản lý sản phẩm</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-content-secondary">Thêm món mới và thiết lập công thức định lượng cho từng sản phẩm.</p>
+        </div>
+        <button onClick={() => setIsModalOpen(true)} className="btn-primary min-h-11 px-4 text-white">
+          <Plus size={18} aria-hidden="true" /> Thêm món mới
         </button>
-      </div>
+      </header>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-xs font-bold">
-            <tr>
-              <th className="p-4">Tên sản phẩm</th>
-              <th className="p-4">Danh mục</th>
-              <th className="p-4">Giá gốc</th>
-              <th className="p-4 text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-700">
-            {products.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50 transition">
-                <td className="p-4">{item.name}</td>
-                <td className="p-4">
-                  {item.category?.name || item.categoryName || "---"}
-                </td>
-                <td className="p-4">{item.basePrice?.toLocaleString()} ₫</td>
-                <td className="p-4 flex justify-end gap-2">
-                  <button
-                    onClick={() => openRecipeModal(item)}
-                    className="text-amber-600 hover:text-amber-800 bg-amber-50 p-2 rounded-lg transition mr-2 flex items-center gap-1"
-                    title="Cài đặt công thức"
-                  >
-                    <BookOpen size={16} />{" "}
-                    <span className="text-xs font-bold">Công thức</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded-lg"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
+      <div className="ticket overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="border-b border-ink/15 bg-paper-deep/50 text-[11px] uppercase tracking-[0.14em] text-content-secondary">
+              <tr>
+                <th scope="col" className="px-5 py-3 font-semibold">Tên sản phẩm</th>
+                <th scope="col" className="px-5 py-3 font-semibold">Danh mục</th>
+                <th scope="col" className="px-5 py-3 font-semibold">Giá gốc</th>
+                <th scope="col" className="px-5 py-3 text-right font-semibold">Thao tác</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-ink/10">
+              {products.map((item) => (
+                <tr key={item.id} className="transition-colors hover:bg-paper/60">
+                  <td className="px-5 py-4 font-semibold text-ink">{item.name}</td>
+                  <td className="px-5 py-4 text-content-secondary">{item.category?.name || item.categoryName || "---"}</td>
+                  <td className="price whitespace-nowrap px-5 py-4 font-semibold">{item.basePrice?.toLocaleString("vi-VN")} ₫</td>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => openRecipeModal(item)} className={smallButton} title="Cài đặt công thức">
+                        <BookOpen size={15} aria-hidden="true" /> Công thức
+                      </button>
+                      <button onClick={() => handleDelete(item.id)} aria-label={`Xóa ${item.name}`} className={`${smallButton} px-2.5 text-danger hover:border-danger`}>
+                        <Trash2 size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {products.length === 0 && (
+                <tr><td colSpan={4} className="px-5 py-12 text-center text-content-secondary">Chưa có sản phẩm trong thực đơn.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-ink/15 px-5 py-3 text-xs text-content-secondary">
+          <span>Tổng cộng</span>
+          <span className="font-semibold text-ink">{products.length} sản phẩm</span>
+        </div>
       </div>
 
-      {/* Modal Thêm Món Cũ */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60]">
-          <div className="bg-white p-6 rounded-2xl shadow-xl w-[400px]">
-            <h2 className="text-xl font-black text-slate-800 mb-4">
-              Thêm sản phẩm mới
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">
-                  Tên món
-                </label>
-                <input
-                  required
-                  type="text"
-                  className="w-full border p-2.5 rounded-xl bg-white"
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">
-                  Danh mục
-                </label>
-                <select
-                  required
-                  className="w-full border p-2.5 rounded-xl bg-white"
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                >
-                  <option value="" disabled>
-                    -- Chọn danh mục --
-                  </option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.slug}>
-                      {cat.name}
-                    </option>
-                  ))}
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink/45 p-4 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-labelledby="new-product-title">
+          <div className="ticket w-full max-w-md p-6">
+            <div className="border-b border-dashed border-ink/25 pb-4">
+              <p className="kicker">Thực đơn</p>
+              <h2 id="new-product-title" className="mt-1 text-xl font-bold text-ink">Thêm sản phẩm mới</h2>
+            </div>
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              <label className="block text-xs font-semibold text-content-secondary">Tên món
+                <input required type="text" className="field mt-2" onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+              </label>
+              <label className="block text-xs font-semibold text-content-secondary">Danh mục
+                <select required className="field mt-2" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
+                  <option value="" disabled>Chọn danh mục</option>
+                  {categories.map((cat) => <option key={cat.id} value={cat.slug}>{cat.name}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">
-                  Giá gốc (VNĐ)
-                </label>
-                <input
-                  required
-                  type="number"
-                  className="w-full border p-2.5 rounded-xl bg-white"
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      basePrice: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-xl"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#A07049] text-white font-bold rounded-xl hover:bg-[#8b5e3c]"
-                >
-                  Lưu sản phẩm
-                </button>
+              </label>
+              <label className="block text-xs font-semibold text-content-secondary">Giá gốc (VNĐ)
+                <input required type="number" min="0" className="field mt-2" onChange={(e) => setFormData({ ...formData, basePrice: Number(e.target.value) })} />
+              </label>
+              <div className="flex justify-end gap-2 border-t border-dashed border-ink/25 pt-5">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="inline-flex min-h-11 items-center rounded-ticket px-4 text-sm font-semibold text-content-secondary hover:bg-paper">Hủy</button>
+                <button type="submit" className="btn-primary min-h-11 px-4 text-white">Lưu sản phẩm</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL QUẢN LÝ CÔNG THỨC THẬT */}
       {isRecipeModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[70]">
-          <div className="bg-white rounded-2xl shadow-2xl w-[600px] flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-amber-50/50 rounded-t-2xl">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-ink/50 p-4 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-labelledby="recipe-title">
+          <div className="ticket flex max-h-[90vh] w-full max-w-2xl flex-col">
+            <div className="flex items-start justify-between gap-4 border-b border-dashed border-ink/25 p-6">
               <div>
-                <h2 className="text-xl font-black text-slate-800">
-                  Công thức định lượng
-                </h2>
-                <p className="text-sm font-medium text-amber-700 mt-1">
-                  Sản phẩm: {selectedProduct?.name}
-                </p>
+                <p className="kicker">Định lượng</p>
+                <h2 id="recipe-title" className="mt-1 text-xl font-bold text-ink">Công thức sản phẩm</h2>
+                <p className="mt-1 text-sm font-medium text-primary">{selectedProduct?.name}</p>
               </div>
-              <button
-                onClick={() => setIsRecipeModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 bg-white p-2 rounded-full shadow-sm"
-              >
-                <X size={20} />
+              <button onClick={() => setIsRecipeModalOpen(false)} aria-label="Đóng" className="rounded-ticket border border-ink/20 p-2 text-content-secondary hover:border-ink hover:text-ink">
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 flex gap-3 items-end">
-                <div className="flex-1">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
-                    Chọn Nguyên Liệu
-                  </label>
-                  <select
-                    className="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white"
-                    value={selectedIngredientId}
-                    onChange={(e) => setSelectedIngredientId(e.target.value)}
-                  >
-                    <option value="">-- Chọn --</option>
-                    {ingredients.map((ing) => (
-                      <option key={ing.id} value={ing.id}>
-                        {ing.name} ({ing.unit})
-                      </option>
-                    ))}
+            <div className="overflow-y-auto p-6">
+              <div className="flex flex-wrap items-end gap-3 rounded-ticket border border-ink/15 bg-paper-deep/40 p-4">
+                <label className="min-w-40 flex-1 text-xs font-semibold text-content-secondary">Chọn nguyên liệu
+                  <select className="field mt-2" value={selectedIngredientId} onChange={(e) => setSelectedIngredientId(e.target.value)}>
+                    <option value="">Chọn nguyên liệu</option>
+                    {ingredients.map((ing) => <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>)}
                   </select>
-                </div>
-                <div className="w-24">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
-                    Định lượng
-                  </label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    className="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    placeholder="VD: 20"
-                  />
-                </div>
-                <button
-                  onClick={handleAddRecipe}
-                  className="bg-[#A07049] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#8b5e3c] h-[38px]"
-                >
-                  Thêm
-                </button>
+                </label>
+                <label className="w-28 text-xs font-semibold text-content-secondary">Định lượng
+                  <input type="number" min="0.1" step="0.1" className="field mt-2" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="VD: 20" />
+                </label>
+                <button onClick={handleAddRecipe} className="btn-primary min-h-12 px-4 text-white">Thêm</button>
               </div>
 
-              <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">
-                Thành phần hiện tại
-              </h3>
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="p-3 font-semibold text-slate-600">
-                        Tên nguyên liệu
-                      </th>
-                      <th className="p-3 font-semibold text-slate-600">
-                        Định lượng
-                      </th>
-                      <th className="p-3 text-right font-semibold text-slate-600">
-                        Xóa
-                      </th>
-                    </tr>
+              <h3 className="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-content-secondary">Thành phần hiện tại</h3>
+              <div className="mt-3 overflow-hidden rounded-ticket border border-ink/15">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-ink/15 bg-paper-deep/50 text-[11px] uppercase tracking-[0.12em] text-content-secondary">
+                    <tr><th scope="col" className="px-3 py-2.5 font-semibold">Nguyên liệu</th><th scope="col" className="px-3 py-2.5 font-semibold">Định lượng</th><th scope="col" className="px-3 py-2.5 text-right font-semibold">Xóa</th></tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {!Array.isArray(recipeItems) || recipeItems.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={3}
-                          className="p-4 text-center text-slate-400"
-                        >
-                          Chưa có nguyên liệu nào.
+                  <tbody className="divide-y divide-ink/10">
+                    {recipeItems.length === 0 ? (
+                      <tr><td colSpan={3} className="px-3 py-8 text-center text-content-secondary">Chưa có nguyên liệu nào.</td></tr>
+                    ) : recipeItems.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-3 py-3 font-medium text-ink">{item.ingredient?.name}</td>
+                        <td className="price px-3 py-3 font-semibold text-primary">{item.quantity} {item.ingredient?.unit}</td>
+                        <td className="px-3 py-3 text-right">
+                          <button onClick={() => handleDeleteRecipe(item.ingredientId)} aria-label={`Xóa ${item.ingredient?.name}`} className="rounded-ticket p-1.5 text-danger hover:bg-danger-light">
+                            <X size={15} aria-hidden="true" />
+                          </button>
                         </td>
                       </tr>
-                    ) : (
-                      recipeItems.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50">
-                          <td className="p-3 font-medium text-slate-800">
-                            {item.ingredient?.name}
-                          </td>
-                          <td className="p-3 font-bold text-amber-600">
-                            {item.quantity} {item.ingredient?.unit}
-                          </td>
-                          <td className="p-3 text-right">
-                            <button
-                              onClick={() =>
-                                handleDeleteRecipe(item.ingredientId)
-                              }
-                              className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-md transition"
-                            >
-                              <X size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    ))}
                   </tbody>
                   {recipeItems.length > 0 && (
-                    <tfoot className="bg-amber-50/50 border-t-2 border-amber-200">
+                    <tfoot className="border-t border-ink/15 bg-paper-deep/40">
                       <tr>
-                        <td
-                          colSpan={2}
-                          className="p-3 text-right font-black text-slate-700 uppercase text-xs"
-                        >
-                          Tổng giá vốn (COGS):
-                        </td>
-                        <td
-                          colSpan={2}
-                          className="p-3 font-black text-red-600 text-lg"
-                        >
-                          {recipeItems
-                            .reduce((sum, item) => {
-                              // Giả sử item.ingredient.price là giá trên 1 đơn vị (1 gram/1 ml)
-                              const cost =
-                                item.quantity *
-                                (Number(item.ingredient?.price) || 0);
-                              return sum + cost;
-                            }, 0)
-                            .toLocaleString()}{" "}
-                          ₫
-                        </td>
+                        <td colSpan={2} className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-content-secondary">Tổng giá vốn (COGS)</td>
+                        <td className="price px-3 py-3 text-right text-lg font-bold text-danger">{cost.toLocaleString("vi-VN")} ₫</td>
                       </tr>
                     </tfoot>
                   )}

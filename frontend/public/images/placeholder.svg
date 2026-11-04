@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Chưa có ảnh sản phẩm">
+  <rect width="800" height="600" fill="#EDE6D8"/>
+  <g fill="none" stroke="#1C4E63" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+    <path d="M300 220h180v90a90 90 0 0 1-180 0z"/>
+    <path d="M480 245h30a38 38 0 0 1 0 76h-30"/>
+    <path d="M285 430h210"/>
+    <path d="M360 180c0-16 16-16 16-32M400 180c0-16 16-16 16-32M440 180c0-16 16-16 16-32"/>
+  </g>
+  <text x="400" y="500" font-family="system-ui, sans-serif" font-size="26" fill="#1C4E63" text-anchor="middle" opacity="0.7">Ảnh đang được cập nhật</text>
+</svg>
