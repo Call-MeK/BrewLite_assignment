@@ -3,25 +3,118 @@
 @tailwind utilities;
 
 :root {
-  --background: #FCF8F3;
-  --foreground: #2E211B;
+  --ink: #17150f;
+  --paper: #f3eee3;
+  --enamel: #1c4e63;
+  --saffron: #e39b2d;
+  --brick: #a62f24;
 }
 
-body {
-  color: var(--foreground);
-  background-color: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-paper font-sans text-content-primary;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: #e9c98d;
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--enamel);
+    outline-offset: 2px;
+  }
 }
 
-::selection {
-  background: #F1D7BE;
-  color: #2E211B;
+@layer components {
+  .shell {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+
+  .kicker {
+    @apply text-[0.8rem] font-semibold text-primary;
+  }
+
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 px-5 text-sm font-semibold transition-colors;
+    border-radius: 3px;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-hover;
+  }
+
+  .btn-ink {
+    @apply btn bg-ink text-paper hover:bg-ink-soft;
+  }
+
+  .btn-outline {
+    @apply btn border-[1.5px] border-ink bg-transparent text-ink hover:bg-ink hover:text-paper;
+  }
+
+  .btn-quiet {
+    @apply btn border border-border-light bg-white text-ink hover:border-ink;
+  }
+
+  .ticket {
+    @apply rounded-ticket border-[1.5px] border-ink bg-white shadow-ticket;
+  }
+
+  .ticket-perf {
+    @apply border-t border-dashed border-ink/30 pt-4;
+  }
+
+  .price {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+
+  .field {
+    @apply min-h-12 w-full rounded-ticket border border-border-light bg-white px-3 text-content-primary
+      placeholder:text-content-secondary/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15;
+  }
+
+  .rule {
+    @apply border-t border-ink/15;
+  }
+
+  .tab {
+    @apply min-h-11 shrink-0 border-b-2 border-transparent px-1 text-sm font-semibold text-content-secondary
+      transition-colors hover:text-ink;
+  }
+
+  .tab-active {
+    @apply border-ink text-ink;
+  }
+
+  .link-underline {
+    @apply underline decoration-ink/30 decoration-1 underline-offset-4 transition-colors hover:decoration-ink;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

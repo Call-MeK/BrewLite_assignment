@@ -22,6 +22,9 @@ dist/
 .env.test.local
 .env.production.local
 
+# Playwright MCP artifacts
+.playwright-mcp/
+
 # Debug logs
 npm-debug.log*
 yarn-debug.log*
@@ -37,3 +40,9 @@ Thumbs.db
 
 # Docker data volume (if local)
 postgres_data/
+
+.agents/
+skills-lock.json
+opencode.json
+.opencode/postman-mcp.cmd
+/.opencode

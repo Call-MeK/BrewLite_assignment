@@ -80,7 +80,7 @@ export class ProductsService {
 
   async getProducts() {
     const products = await this.prisma.product.findMany({
-      where: { isAvailable: true },
+      where: { isAvailable: true, stock: { gt: 0 } },
       include: {
         category: { select: { name: true } },
         sizePrices: {
@@ -155,42 +155,20 @@ export class ProductsService {
 
   // Lấy danh sách nguyên liệu cấu thành 1 sản phẩm
   async getRecipe(productId: string) {
-    return this.prisma.recipeItem.findMany({
-      where: { productId },
-      include: {
-        ingredient: {
-          select: { id: true, name: true, unit: true, price: true },
-        },
-      },
+    return this.prisma.recipeIngredient.findMany({ where: { productId }, include: { ingredient: { select: { id: true, name: true, unit: true, price: true } } } });
+  }
+  async addRecipeItem(productId: string, ingredientId: string, quantity: number) {
+    return this.prisma.$transaction(async tx => {
+      const sizes = await tx.productSizePrice.findMany({ where: { productId }, select: { size: true } });
+      if (!sizes.length) throw new NotFoundException("S?n ph?m kh?ng c? size");
+      return Promise.all(sizes.map(({ size }) => tx.recipeIngredient.upsert({ where: { productId_size_ingredientId: { productId, size, ingredientId } }, update: { quantity }, create: { productId, size, ingredientId, quantity } })));
     });
   }
-
-  // Thêm hoặc cập nhật nguyên liệu vào công thức
-  async addRecipeItem(
-    productId: string,
-    ingredientId: string,
-    quantity: number,
-  ) {
-    // Dùng upsert: Nếu nguyên liệu đã có trong món này thì cập nhật số lượng, chưa có thì thêm mới
-    return this.prisma.recipeItem.upsert({
-      where: {
-        productId_ingredientId: { productId, ingredientId },
-      },
-      update: { quantity },
-      create: { productId, ingredientId, quantity },
-    });
-  }
-
-  // Xóa nguyên liệu khỏi công thức
   async removeRecipeItem(productId: string, ingredientId: string) {
-    return this.prisma.recipeItem.delete({
-      where: {
-        productId_ingredientId: { productId, ingredientId },
-      },
-    });
+    return this.prisma.recipeIngredient.deleteMany({ where: { productId, ingredientId } });
   }
   async remove(id: string) {
-    await this.prisma.recipeItem.deleteMany({
+    await this.prisma.recipeIngredient.deleteMany({
       where: { productId: id },
     });
 

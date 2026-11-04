@@ -7,7 +7,9 @@ import { ArrowLeft, Check, Coffee, Minus, Plus, RefreshCw, ShoppingBag } from 'l
 import { ApiError } from '@/lib/api-client';
 import { addOrMergeCartItem } from '@/lib/cart-items';
 import { getProductById } from '@/services/product.service';
+import { resolveProductImage } from '@/lib/local-product-images';
 import type { CartItemDraft, ProductDetail, ProductSize } from '@/types/product';
+import { useRequestCooldown } from '@/components/use-request-cooldown';
 
 const money = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
@@ -29,6 +31,7 @@ function isValidProduct(value: ProductDetail): boolean {
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const cooldown = useRequestCooldown('GET', `/products/${id}`);
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -114,42 +117,42 @@ export default function ProductDetailPage() {
   }
 
   if (error || !product) {
-    return <div className="mx-auto max-w-xl rounded-3xl border border-border-light bg-white p-8 text-center shadow-sm">
+    return <div className="ticket mx-auto max-w-xl p-8 text-center">
       <Coffee className="mx-auto mb-4 text-primary" size={38} />
-      <h1 className="text-2xl font-black text-navy">{error.includes('Không tìm thấy') ? 'Không tìm thấy sản phẩm' : 'Chưa thể tải sản phẩm'}</h1>
+      <h1 className="text-2xl font-extrabold text-navy">{error.includes('Không tìm thấy') ? 'Không tìm thấy sản phẩm' : 'Chưa thể tải sản phẩm'}</h1>
       <p className="mt-3 text-content-secondary">{error || 'Dữ liệu sản phẩm không khả dụng.'}</p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <button onClick={() => void loadProduct()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-white"><RefreshCw size={17} /> Thử lại</button>
-        <Link href="/menu" className="rounded-xl border border-border-light px-4 py-3 font-semibold text-navy">Quay lại thực đơn</Link>
+        <button disabled={cooldown.blocked} onClick={() => { if (cooldown.start()) void loadProduct(); }} className="btn-primary"><RefreshCw size={17} /> {cooldown.label || 'Thử lại'}</button>
+        <Link href="/menu" className="btn-outline">Quay lại thực đơn</Link>
       </div>
     </div>;
   }
 
-  return <div className="mx-auto max-w-5xl space-y-6">
-    <Link href="/menu" className="inline-flex items-center gap-2 text-sm font-semibold text-content-secondary transition hover:text-primary"><ArrowLeft size={17} /> Quay lại thực đơn</Link>
-    <div className="grid overflow-hidden rounded-3xl border border-border-light bg-white shadow-sm md:grid-cols-2">
-      <div className="relative flex min-h-[300px] items-center justify-center bg-[#f5f0e8] md:min-h-[560px]">
-        {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full max-h-[560px] w-full object-cover" /> : <div className="p-12 text-center"><Coffee size={88} className="mx-auto text-[#a77b50]" /><p className="mt-4 font-medium text-[#80674f]">Ảnh đồ uống BrewLite</p></div>}
-        {!product.isAvailable && <span className="absolute left-5 top-5 rounded-full bg-red-700 px-4 py-2 text-sm font-bold text-white">Hiện hết hàng</span>}
+  return <div className="mx-auto max-w-5xl space-y-5">
+    <Link href="/menu" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-content-secondary transition hover:text-primary"><ArrowLeft size={17} /> Quay lại thực đơn</Link>
+    <div className="ticket grid overflow-hidden md:grid-cols-2">
+      <div className="relative flex min-h-[300px] items-center justify-center border-b-[1.5px] border-ink/15 bg-paper-deep md:min-h-[560px] md:border-b-0 md:border-r-[1.5px]">
+        {product.imageUrl ? <img src={resolveProductImage(product)} alt={product.name} className="h-full max-h-[560px] w-full object-cover" /> : <div className="p-12 text-center"><Coffee size={88} className="mx-auto text-[#a77b50]" /><p className="mt-4 font-medium text-[#80674f]">Ảnh đồ uống BrewLite</p></div>}
+        {!product.isAvailable && <span className="absolute left-5 top-5 rounded-ticket bg-danger px-4 py-2 text-sm font-bold text-white">Hiện hết hàng</span>}
       </div>
 
       <div className="flex flex-col p-6 sm:p-8 lg:p-10">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">BrewLite · Chi tiết sản phẩm</p>
-        <h1 className="mt-3 text-3xl font-black leading-tight text-navy">{product.name}</h1>
+        <p className="kicker">BrewLite, chi tiết sản phẩm</p>
+        <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-[-0.03em] text-navy">{product.name}</h1>
         <p className="mt-3 text-sm leading-6 text-content-secondary">{product.categorySlug === 'ca-phe' ? 'Chọn size cà phê theo sở thích của bạn.' : 'Tùy chỉnh size và topping để tạo nên ly đồ uống theo sở thích của bạn.'}</p>
-        <div className="mt-5 border-b border-border-light pb-5">
+        <div className="mt-5 border-b border-dashed border-ink/25 pb-5">
           <p className="text-sm text-content-secondary">Giá gốc</p>
-          <p className="mt-1 text-2xl font-black text-primary">{money(product.basePrice)}</p>
+          <p className="price mt-1 text-2xl font-extrabold text-primary">{money(product.basePrice)}</p>
         </div>
 
         <fieldset disabled={!product.isAvailable} className="mt-6">
-          <legend className="mb-3 font-bold text-navy">1. Chọn kích cỡ <span className="text-red-600">*</span></legend>
-          {product.sizePrices.length === 0 ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Sản phẩm chưa có kích cỡ khả dụng.</p> :
+          <legend className="mb-3 font-bold text-navy">1. Chọn kích cỡ <span className="text-danger">*</span></legend>
+          {product.sizePrices.length === 0 ? <p className="rounded-ticket border-l-4 border-accent bg-accent-soft p-3 text-sm text-ink">Sản phẩm chưa có kích cỡ khả dụng.</p> :
             <div className="grid grid-cols-3 gap-3">
               {product.sizePrices.map((item) => {
                 const active = selectedSize === item.size;
-                return <button type="button" key={item.size} onClick={() => { setSelectedSize(item.size); setNotice(''); }} className={`rounded-2xl border p-3 text-left transition ${active ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border-light hover:border-primary/50'}`}>
-                  <span className="flex items-center justify-between font-extrabold text-navy">{item.size}{active && <Check size={15} className="text-primary" />}</span>
+                return <button type="button" key={item.size} onClick={() => { setSelectedSize(item.size); setNotice(''); }} className={`rounded-ticket border-[1.5px] p-3 text-left transition ${active ? 'border-primary bg-primary-light' : 'border-ink/20 hover:border-primary/60'}`}>
+                  <span className="price flex items-center justify-between font-extrabold text-navy">{item.size}{active && <Check size={15} className="text-primary" />}</span>
                   <span className="mt-1 block text-xs text-content-secondary">{item.priceAdjustment > 0 ? '+' + money(item.priceAdjustment) : 'Không phụ thu'}</span>
                 </button>;
               })}
@@ -159,35 +162,35 @@ export default function ProductDetailPage() {
         {product.categorySlug !== 'ca-phe' && <fieldset disabled={!product.isAvailable} className="mt-7">
           <legend className="mb-1 font-bold text-navy">2. Thêm topping <span className="text-xs font-normal text-content-secondary">(tối đa 3)</span></legend>
           <p className="mb-3 text-xs text-content-secondary">Chọn thêm để ly nước hợp khẩu vị hơn.</p>
-          {product.toppings.length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-content-secondary">Hiện chưa có topping khả dụng.</p> :
+          {product.toppings.length === 0 ? <p className="rounded-ticket border border-ink/15 bg-paper p-3 text-sm text-content-secondary">Hiện chưa có topping khả dụng.</p> :
             <div className="space-y-2">
               {product.toppings.map((item) => {
                 const active = selectedToppings.includes(item.id);
-                return <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${active ? 'border-primary bg-primary/5' : 'border-border-light hover:border-primary/40'}`}>
+                return <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-ticket border p-3 transition ${active ? 'border-primary bg-primary-light' : 'border-ink/20 hover:border-primary/60'}`}>
                   <input type="checkbox" checked={active} onChange={() => toggleTopping(item.id)} disabled={!active && selectedToppings.length >= 3} className="h-4 w-4 accent-primary" />
                   <span className="flex-1 text-sm font-semibold text-navy">{item.name}</span>
-                  <span className="text-sm font-semibold text-content-secondary">+{money(item.price)}</span>
+                  <span className="price text-sm font-semibold text-content-secondary">+{money(item.price)}</span>
                 </label>;
               })}
             </div>}
         </fieldset>}
 
-        <div className="mt-7 flex items-center justify-between rounded-2xl bg-surface-secondary p-4">
-          <div><p className="text-sm font-semibold text-content-secondary">Số lượng</p><p className="mt-1 text-xs text-content-secondary">Từ 1 đến 99 ly</p></div>
+        <div className="mt-7 flex items-center justify-between rounded-ticket border border-dashed border-ink/30 bg-paper p-4">
+          <div><p className="text-sm font-semibold text-ink">Số lượng</p><p className="mt-1 text-xs text-content-secondary">Từ 1 đến 99 ly</p></div>
           <div className="flex items-center gap-4">
-            <button aria-label="Giảm số lượng" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1} className="flex h-11 w-11 items-center justify-center rounded-lg border border-border-light bg-white disabled:opacity-40"><Minus size={16} /></button>
-            <span className="min-w-5 text-center font-bold text-navy">{quantity}</span>
-            <button aria-label="Tăng số lượng" onClick={() => setQuantity((q) => Math.min(99, q + 1))} disabled={quantity >= 99} className="flex h-11 w-11 items-center justify-center rounded-lg border border-border-light bg-white disabled:opacity-40"><Plus size={16} /></button>
+            <button aria-label="Giảm số lượng" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1} className="flex h-11 w-11 items-center justify-center rounded-ticket border border-ink/20 bg-white text-ink disabled:opacity-40"><Minus size={16} /></button>
+            <span className="price min-w-5 text-center font-bold text-navy">{quantity}</span>
+            <button aria-label="Tăng số lượng" onClick={() => setQuantity((q) => Math.min(99, q + 1))} disabled={quantity >= 99} className="flex h-11 w-11 items-center justify-center rounded-ticket border border-ink/20 bg-white text-ink disabled:opacity-40"><Plus size={16} /></button>
           </div>
         </div>
 
-        {notice && <p role="status" className="mt-4 rounded-xl bg-primary-light p-3 text-sm text-primary">{notice}</p>}
-        <div className="mt-6 border-t border-border-light pt-5">
+        {notice && <p role="status" className="mt-4 rounded-ticket border-l-4 border-primary bg-primary-light p-3 text-sm text-primary">{notice}</p>}
+        <div className="mt-6 border-t border-dashed border-ink/25 pt-5">
           <div className="flex items-end justify-between gap-3">
-            <div><p className="text-sm text-content-secondary">Giá ước tính / ly</p><p className="mt-1 text-2xl font-black text-navy">{estimatedPrice === null ? '—' : money(estimatedPrice)}</p></div>
-            <div className="text-right"><p className="text-sm text-content-secondary">Tạm tính</p><p className="mt-1 text-lg font-bold text-primary">{estimatedPrice === null ? '—' : money(estimatedPrice * quantity)}</p></div>
+            <div><p className="text-sm text-content-secondary">Giá ước tính / ly</p><p className="price mt-1 text-2xl font-extrabold text-navy">{estimatedPrice === null ? '—' : money(estimatedPrice)}</p></div>
+            <div className="text-right"><p className="text-sm text-content-secondary">Tạm tính</p><p className="price mt-1 text-lg font-bold text-primary">{estimatedPrice === null ? '—' : money(estimatedPrice * quantity)}</p></div>
           </div>
-          <button onClick={addToCart} disabled={!product.isAvailable || !selectedSize || estimatedPrice === null || adding} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 font-bold text-white shadow-md shadow-primary/20 transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
+          <button onClick={addToCart} disabled={!product.isAvailable || !selectedSize || estimatedPrice === null || adding} className="btn-primary mt-5 w-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-40">
             <ShoppingBag size={19} />{!product.isAvailable ? 'Sản phẩm hiện hết hàng' : adding ? 'Đang thêm...' : 'Thêm món đã chọn'}
           </button>
           <p className="mt-3 text-center text-xs leading-5 text-content-secondary">Giá trên trang là giá ước tính. Giá cuối cùng sẽ được hệ thống xác nhận khi đặt hàng.</p>

@@ -19,6 +19,7 @@ const ORDER_HISTORY_SELECT = {
   id: true,
   orderNumber: true,
   status: true,
+  refundStatus: true,
   totalAmount: true,
   discountAmount: true,
   finalAmount: true,
@@ -92,6 +93,7 @@ export class OrdersService {
             }
           }
 
+          const productQuantities = new Map<string, number>();
           const toppingQuantities = new Map<string, number>();
           let totalAmount = 0;
           const orderItems = dto.items.map((item) => {
@@ -132,6 +134,7 @@ export class OrdersService {
                 )) *
               item.quantity;
 
+            productQuantities.set(item.productId, (productQuantities.get(item.productId) ?? 0) + item.quantity);
             totalAmount += lineTotal;
 
             return {
@@ -147,11 +150,20 @@ export class OrdersService {
           // =================================================================
           // [MỚI] BOM: TÍNH TOÁN VÀ TRỪ KHO NGUYÊN LIỆU (INGREDIENT)
           // =================================================================
+          for (const productId of [...productQuantities.keys()].sort()) {
+            const product = productsById.get(productId)!;
+            const quantity = productQuantities.get(productId)!;
+            const updated = await tx.product.updateMany({
+              where: { id: productId, isAvailable: true, version: product.version, stock: { gte: quantity } },
+              data: { stock: { decrement: quantity }, version: { increment: 1 } },
+            });
+            if (updated.count !== 1) throw new BadRequestException(`Sản phẩm không đủ tồn kho: ${product.name}`);
+          }
+
           const requiredIngredients = await this.calculateRequiredIngredients(
             tx,
             orderItems,
           );
-          console.log("=== NGUYÊN LIỆU CẦN TRỪ ===", requiredIngredients);
 
           for (const req of requiredIngredients) {
             const ingredient = await tx.ingredient.findUnique({
@@ -275,6 +287,7 @@ export class OrdersService {
               discountAmount,
               finalAmount,
               items: { create: orderItems },
+              ingredients: { create: requiredIngredients.map(({ ingredientId, totalQuantity }) => ({ ingredientId, quantity: totalQuantity })) },
               statusHistory: {
                 create: {
                   fromStatus: null,
@@ -361,17 +374,15 @@ export class OrdersService {
     const ingredientMap = new Map<string, number>();
 
     for (const item of cartItems) {
-      // Lấy công thức pha chế từ bảng RecipeItem (theo productId)
-      const recipes = await tx.recipeItem.findMany({
-        where: { productId: item.productId },
+      const recipes = await tx.recipeIngredient.findMany({
+        where: { productId: item.productId, size: item.size },
       });
 
       // Nhân định mức với số lượng ly khách đặt
       for (const recipe of recipes) {
         const currentTotal = ingredientMap.get(recipe.ingredientId) || 0;
 
-        // Chú ý: Ở bảng RecipeItem, trường định lượng tên là 'quantity'
-        const additionalQuantity = recipe.quantity * item.quantity;
+        const additionalQuantity = Number(recipe.quantity) * item.quantity;
 
         ingredientMap.set(
           recipe.ingredientId,
@@ -386,125 +397,155 @@ export class OrdersService {
     }));
   }
 
-  async cancel(orderId: string, userId: string) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        const order = await tx.order.findFirst({
-          where: { id: orderId, userId },
-          include: {
-            loyaltyTransactions: {
-              where: { type: LoyaltyTransactionType.SPENT },
-              select: { points: true },
+  async cancel(orderId: string, userId?: string, changedBy = "customer", pendingOnly = false) {
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const order = await tx.order.findFirst({
+            where: { id: orderId, userId },
+            include: {
+              ingredients: true,
+              loyaltyTransactions: {
+                where: { type: LoyaltyTransactionType.SPENT },
+                select: { points: true },
+              },
+              items: {
+                include: { toppings: { select: { toppingId: true } } },
+              },
             },
-            items: {
-              include: { toppings: { select: { toppingId: true } } },
+          });
+          if (!order) {
+            throw new NotFoundException("Không tìm thấy đơn hàng");
+          }
+          if (order.status === OrderStatus.CANCELLED && !pendingOnly) {
+            return { id: order.id, orderNumber: order.orderNumber, status: order.status, refundStatus: order.refundStatus };
+          }
+          if (
+            (pendingOnly && order.status !== OrderStatus.PENDING) ||
+            (order.status !== OrderStatus.PENDING &&
+            order.status !== OrderStatus.PAYMENT_FAILED &&
+            order.status !== OrderStatus.PAID)
+          ) {
+            throw new ConflictException(
+              "Chỉ có thể hủy đơn trước khi pha chế",
+            );
+          }
+
+          assertOrderTransition(order.status, OrderStatus.CANCELLED);
+          const updated = await tx.order.updateMany({
+            where: {
+              id: order.id,
+              userId,
+              status: order.status,
+              version: order.version,
             },
-          },
-        });
-        if (!order) {
-          throw new NotFoundException("Không tìm thấy đơn hàng");
-        }
-        if (
-          order.status !== OrderStatus.PENDING &&
-          order.status !== OrderStatus.PAYMENT_FAILED
-        ) {
-          throw new ConflictException(
-            "Chỉ có thể hủy đơn đang chờ thanh toán hoặc thanh toán thất bại",
-          );
-        }
-
-        assertOrderTransition(order.status, OrderStatus.CANCELLED);
-        const updated = await tx.order.updateMany({
-          where: {
-            id: order.id,
-            userId,
-            status: order.status,
-            version: order.version,
-          },
-          data: {
-            status: OrderStatus.CANCELLED,
-            version: { increment: 1 },
-          },
-        });
-        if (updated.count !== 1) {
-          throw new ConflictException(
-            "Đơn hàng vừa được cập nhật, vui lòng tải lại và thử lại",
-          );
-        }
-
-        // [MỚI] BOM: HOÀN TRẢ KHO NGUYÊN LIỆU (INGREDIENT)
-        const requiredIngredients = await this.calculateRequiredIngredients(
-          tx,
-          order.items,
-        );
-        for (const req of requiredIngredients) {
-          const ingredientRestored = await tx.ingredient.updateMany({
-            where: { id: req.ingredientId },
             data: {
-              stock: { increment: req.totalQuantity },
+              status: OrderStatus.CANCELLED,
+              refundStatus: order.status === OrderStatus.PAID ? "MANUAL_REQUIRED" : "NONE",
               version: { increment: 1 },
             },
           });
-          if (ingredientRestored.count !== 1) {
+          if (updated.count !== 1) {
             throw new ConflictException(
-              "Không thể hoàn lại tồn kho nguyên liệu của đơn hàng",
+              "Đơn hàng vừa được cập nhật, vui lòng tải lại và thử lại",
             );
           }
-        }
 
-        // HOÀN TRẢ KHO TOPPING
-        for (const item of order.items) {
-          for (const topping of item.toppings) {
-            const toppingRestored = await tx.topping.updateMany({
-              where: { id: topping.toppingId },
-              data: { stock: { increment: item.quantity } },
+          // [MỚI] BOM: HOÀN TRẢ KHO NGUYÊN LIỆU (INGREDIENT)
+          const requiredIngredients = order.ingredients.map(item => ({ ingredientId: item.ingredientId, totalQuantity: item.quantity }));
+          for (const req of requiredIngredients) {
+            const ingredientRestored = await tx.ingredient.updateMany({
+              where: { id: req.ingredientId },
+              data: {
+                stock: { increment: req.totalQuantity },
+                version: { increment: 1 },
+              },
             });
-            if (toppingRestored.count !== 1) {
+            if (ingredientRestored.count !== 1) {
               throw new ConflictException(
-                "Không thể hoàn lại tồn kho topping của đơn hàng",
+                "Không thể hoàn lại tồn kho nguyên liệu của đơn hàng",
               );
             }
           }
-        }
 
-        const pointsRedeemed = order.loyaltyTransactions.reduce(
-          (sum, item) => sum + item.points,
-          0,
-        );
-        if (pointsRedeemed > 0) {
-          await tx.user.update({
-            where: { id: userId },
-            data: { loyaltyPoints: { increment: pointsRedeemed } },
-          });
-          await tx.loyaltyTransaction.create({
+          // HOÀN TRẢ KHO TOPPING
+          for (const item of order.items) {
+            const productRestored = await tx.product.updateMany({ where: { id: item.productId }, data: { stock: { increment: item.quantity }, version: { increment: 1 } } });
+            if (productRestored.count !== 1) throw new ConflictException("Không thể hoàn lại tồn kho sản phẩm");
+            for (const topping of item.toppings) {
+              const toppingRestored = await tx.topping.updateMany({
+                where: { id: topping.toppingId },
+                data: { stock: { increment: item.quantity } },
+              });
+              if (toppingRestored.count !== 1) {
+                throw new ConflictException(
+                  "Không thể hoàn lại tồn kho topping của đơn hàng",
+                );
+              }
+            }
+          }
+
+          const pointsRedeemed = order.loyaltyTransactions.reduce(
+            (sum, item) => sum + item.points,
+            0,
+          );
+          if (pointsRedeemed > 0) {
+            await tx.user.update({
+              where: { id: order.userId },
+              data: { loyaltyPoints: { increment: pointsRedeemed } },
+            });
+            await tx.loyaltyTransaction.create({
+              data: {
+                userId: order.userId,
+                orderId: order.id,
+                points: pointsRedeemed,
+                type: LoyaltyTransactionType.REFUNDED,
+                reason: "Points refunded after order cancellation",
+              },
+            });
+          }
+
+          if (order.status === OrderStatus.PAID && order.pointsEarned > 0) {
+            // Earned points may already have been spent; a negative balance records the debt.
+            await tx.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { decrement: order.pointsEarned } } });
+            await tx.loyaltyTransaction.create({ data: {
+              userId: order.userId, orderId: order.id, points: order.pointsEarned,
+              type: LoyaltyTransactionType.REVERSED, reason: "Earned points reversed after paid order cancellation",
+            } });
+          }
+
+          await tx.orderStatusHistory.create({
             data: {
-              userId,
               orderId: order.id,
-              points: pointsRedeemed,
-              type: LoyaltyTransactionType.REFUNDED,
-              reason: "Points refunded after order cancellation",
+              fromStatus: order.status,
+              toStatus: OrderStatus.CANCELLED,
+              changedBy,
+              reason: order.status === OrderStatus.PAID ? "Cancelled before preparation; manual refund required" : "Order cancelled",
             },
           });
-        }
 
-        await tx.orderStatusHistory.create({
-          data: {
-            orderId: order.id,
-            fromStatus: order.status,
-            toStatus: OrderStatus.CANCELLED,
-            changedBy: "customer",
-            reason: "Customer cancelled",
-          },
-        });
+          return {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            status: OrderStatus.CANCELLED,
+            refundStatus: order.status === OrderStatus.PAID ? "MANUAL_REQUIRED" : "NONE",
+          };
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+        throw new ConflictException("Đơn hàng vừa được cập nhật, vui lòng tải lại và thử lại");
+      }
+      throw error;
+    }
+  }
 
-        return {
-          id: order.id,
-          orderNumber: order.orderNumber,
-          status: OrderStatus.CANCELLED,
-        };
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+  async updateStatus(orderId: string, status: OrderStatus, actorId: string) {
+    if (status !== OrderStatus.PREPARING && status !== OrderStatus.READY && status !== OrderStatus.COMPLETED) {
+      throw new BadRequestException("Unsupported admin order status");
+    }
+    return this.prisma.$transaction(tx => this.transition(orderId, status, tx, actorId, "Admin updated order status"));
   }
 
   async transition(
@@ -514,6 +555,9 @@ export class OrdersService {
     changedBy = "system",
     reason?: string,
   ) {
+    if (toStatus === OrderStatus.CANCELLED) {
+      throw new ConflictException("Use cancellation to restore stock and points");
+    }
     const order = await tx.order.findUnique({ where: { id: orderId } });
     if (!order) {
       throw new NotFoundException("Không tìm thấy đơn hàng");
@@ -577,7 +621,7 @@ export class OrdersService {
     });
   }
 
-  async getOrderHistory(userId: string, query: OrderHistoryQueryDto) {
+  async getOrderHistory(userId: string | undefined, query: OrderHistoryQueryDto) {
     const where: Prisma.OrderWhereInput = {
       userId,
       ...(query.status ? { status: query.status } : {}),
@@ -586,7 +630,7 @@ export class OrdersService {
     const [orders, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where,
-        select: ORDER_HISTORY_SELECT,
+        select: { ...ORDER_HISTORY_SELECT, user: userId === undefined ? { select: { id: true, email: true, fullName: true } } : false },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip,
         take: query.limit,
@@ -600,6 +644,8 @@ export class OrdersService {
         id: order.id,
         orderNumber: order.orderNumber,
         status: order.status,
+        refundStatus: order.refundStatus,
+        ...(userId === undefined ? { customer: order.user } : {}),
         totalAmount: Number(order.totalAmount),
         discountAmount: Number(order.discountAmount),
         finalAmount: Number(order.finalAmount),
@@ -616,10 +662,13 @@ export class OrdersService {
     };
   }
 
-  async getOrderDetail(orderId: string, userId: string) {
+  async getOrderDetail(orderId: string, userId?: string) {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
       include: {
+        user: userId === undefined ? { select: { id: true, email: true, fullName: true } } : false,
+        payments: { select: { id: true, source: true, status: true, amount: true, createdAt: true, reviewReason: true }, orderBy: { createdAt: "desc" } },
+        statusHistory: { select: { fromStatus: true, toStatus: true, changedBy: true, reason: true, createdAt: true }, orderBy: { createdAt: "asc" } },
         loyaltyTransactions: {
           where: { type: LoyaltyTransactionType.SPENT },
           select: { points: true },
@@ -647,6 +696,10 @@ export class OrdersService {
       id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
+      refundStatus: order.refundStatus,
+      ...(userId === undefined ? { customer: order.user } : {}),
+      payments: order.payments?.map(payment => ({ ...payment, amount: Number(payment.amount) })),
+      statusHistory: order.statusHistory,
       totalAmount: Number(order.totalAmount),
       discountAmount: Number(order.discountAmount),
       pointsRedeemed,
@@ -676,7 +729,7 @@ export class OrdersService {
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredPendingOrders() {
     // 1. Tính thời điểm 15 phút trước so với hiện tại
-    const fifteenMinutesAgo = new Date(Date.now() - 1 * 60 * 1000);
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     // 2. Tìm tất cả các đơn hàng PENDING được tạo trước thời điểm đó
     const expiredOrders = await this.prisma.order.findMany({
@@ -696,7 +749,7 @@ export class OrdersService {
     // 3. Gọi lại hàm cancel() bạn vừa viết để xử lý từng đơn
     for (const order of expiredOrders) {
       try {
-        await this.cancel(order.id, order.userId);
+        await this.cancel(order.id, order.userId, "system", true);
         console.log(`✅ Đã hoàn kho thành công đơn hàng hết hạn: ${order.id}`);
       } catch (error) {
         console.error(`❌ Lỗi khi tự động hủy đơn ${order.id}:`, error.message);

@@ -1,6 +1,9 @@
 import { PrismaClient, ProductSize } from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import { additionalMenuItems } from "./additional-menu-items";
+import { ingredientSeeds } from "./ingredients-data";
+import { recipeQuantity, recipeTemplates } from "./recipes-data";
+import { sampleStockImport, sampleStockImportTotal } from "./stock-import-data";
 
 const prisma = new PrismaClient();
 
@@ -14,13 +17,16 @@ async function main() {
   await prisma.orderStatusHistory.deleteMany();
   await prisma.loyaltyTransaction.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.orderIngredient.deleteMany();
+  await prisma.recipeIngredient.deleteMany();
+  await prisma.stockImportItem.deleteMany();
+  await prisma.stockImport.deleteMany();
   await prisma.productSizePrice.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
   await prisma.topping.deleteMany();
   await prisma.promotion.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.recipe.deleteMany();
   await prisma.ingredient.deleteMany();
 
   // 2. Tạo User Demo
@@ -117,10 +123,12 @@ async function main() {
     })),
   ];
 
+  const productIds = new Map<string, string>();
   for (const item of productsData) {
     const product = await prisma.product.create({
       data: {
         ...item,
+        stock: 100,
         sizePrices: {
           create: [
             { size: ProductSize.S, priceAdjustment: 0 },
@@ -130,39 +138,78 @@ async function main() {
         },
       },
     });
+    productIds.set(product.name, product.id);
     console.log(
       `✅ Đã tạo sản phẩm: ${product.name} (Base: ${product.basePrice}đ) kèm size S/M/L`,
     );
   }
   // KHỞI TẠO NGUYÊN LIỆU & CÔNG THỨC
-  const coffee = await prisma.ingredient.create({
-    data: { name: "Cà phê hạt Arabica", unit: "gram", stock: 5000 },
+  await prisma.ingredient.createMany({
+    data: ingredientSeeds.map((item) => ({
+      ...item,
+      nameKey: item.name.toLowerCase(),
+    })),
   });
-  const milk = await prisma.ingredient.create({
-    data: { name: "Sữa tươi", unit: "ml", stock: 10000 },
-  });
+  console.log(`✅ Đã tạo ${ingredientSeeds.length} nguyên liệu cho kho`);
 
-  // Lúc này mới tìm Size, vì Sản phẩm đã được tạo ở Bước 5
-  const sampleSize = await prisma.productSizePrice.findFirst();
-  if (sampleSize) {
-    await prisma.recipe.createMany({
-      data: [
-        {
-          productSizePriceId: sampleSize.id,
-          ingredientId: coffee.id,
-          quantityRequired: 20,
-        },
-        {
-          productSizePriceId: sampleSize.id,
-          ingredientId: milk.id,
-          quantityRequired: 50,
-        },
-      ],
-    });
-    console.log(
-      `✅ Đã tạo công thức mẫu (20g Cafe, 50ml Sữa) cho Size ID: ${sampleSize.id}`,
+  const allIngredients = await prisma.ingredient.findMany();
+  const ingredientByName = new Map(allIngredients.map((item) => [item.name, item]));
+  const recipeRows = recipeTemplates.flatMap((template) => {
+    const productId = productIds.get(template.productName);
+    if (!productId) return [];
+    return ([ProductSize.S, ProductSize.M, ProductSize.L] as ProductSize[]).flatMap(
+      (size) =>
+        template.ingredients.map((item) => ({
+          productId,
+          size,
+          ingredientId: ingredientByName.get(item.ingredientName)!.id,
+          quantity: recipeQuantity(item.quantity, size),
+        })),
     );
+  });
+  await prisma.recipeIngredient.createMany({ data: recipeRows });
+  console.log(
+    `✅ Đã tạo ${recipeRows.length} dòng công thức cho ${recipeTemplates.length} món × 3 size`,
+  );
+
+  // Phiếu nhập mẫu để trang Nhập hàng có dữ liệu ngay sau khi seed.
+  const sampleItems = sampleStockImport.items.map((item) => {
+    const ingredient = ingredientByName.get(item.ingredientName);
+    if (!ingredient) {
+      throw new Error(`Thiếu nguyên liệu cho phiếu nhập mẫu: ${item.ingredientName}`);
+    }
+    return { ...item, ingredientId: ingredient.id };
+  });
+  await prisma.stockImport.create({
+    data: {
+      supplier: sampleStockImport.supplier,
+      note: sampleStockImport.note,
+      totalAmount: sampleStockImportTotal,
+      createdBy: sampleStockImport.createdBy,
+      items: {
+        create: sampleItems.map((item) => ({
+          ingredientId: item.ingredientId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          lineTotal: item.quantity * item.unitPrice,
+        })),
+      },
+    },
+  });
+  for (const item of sampleItems) {
+    await prisma.ingredient.update({
+      where: { id: item.ingredientId },
+      data: {
+        stock: { increment: item.quantity },
+        price: item.unitPrice,
+        version: { increment: 1 },
+      },
+    });
   }
+  console.log(
+    `✅ Đã tạo phiếu nhập mẫu với ${sampleItems.length} nguyên liệu`,
+  );
+
   // 6. Tạo Promotions (Vouchers)
   await prisma.promotion.createMany({
     data: [

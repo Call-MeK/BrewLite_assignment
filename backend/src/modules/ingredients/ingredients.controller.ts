@@ -1,3 +1,4 @@
+import { IngredientUnit } from "@prisma/client";
 import {
   Controller,
   Get,
@@ -18,7 +19,7 @@ export class IngredientsController {
     @Body()
     createIngredientDto: {
       name: string;
-      unit: string;
+      unit: IngredientUnit;
       stock: number;
       price: number;
     },

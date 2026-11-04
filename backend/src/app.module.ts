@@ -8,6 +8,12 @@ import { PaymentsModule } from "./modules/payments/payments.module";
 import { CartModule } from "./modules/cart/cart.module";
 import { ScheduleModule } from "@nestjs/schedule";
 import { IngredientsModule } from "./modules/ingredients/ingredients.module";
+import { UsersModule } from './modules/users/users.module';
+import { RecipesModule } from './modules/recipes/recipes.module';
+import { StockImportsModule } from './modules/stock-imports/stock-imports.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { RequestLimitsInterceptor } from './common/interceptors/request-limits.interceptor';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -21,6 +27,10 @@ import { IngredientsModule } from "./modules/ingredients/ingredients.module";
     PaymentsModule,
     CartModule,
     ScheduleModule.forRoot(),
+    UsersModule,
+    RecipesModule,
+    StockImportsModule,
   ],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: RequestLimitsInterceptor }],
 })
 export class AppModule {}

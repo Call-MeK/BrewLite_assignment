@@ -15,6 +15,7 @@ export interface OrderSummary {
 }
 
 export interface OrderDetail extends Omit<OrderSummary, 'itemCount'> {
+  refundStatus: 'NONE' | 'MANUAL_REQUIRED';
   totalAmount: number;
   discountAmount: number;
   pointsRedeemed: number;

@@ -1,173 +1,182 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
-  TrendingUp,
-  ShoppingBag,
+  ArrowUpRight,
+  CircleAlert,
   Coffee,
-  AlertTriangle,
   PackageX,
+  ReceiptText,
+  ShoppingBag,
+  Wallet,
 } from "lucide-react";
+import { getAdminOrders } from "@/services/admin-order.service";
+
+type Metrics = {
+  orders: number | null;
+  paid: number | null;
+  products: number | null;
+  lowStock: { id: string; name: string; stock: number; unit: string }[];
+  updatedAt: string;
+};
+
+const initialMetrics: Metrics = { orders: null, paid: null, products: null, lowStock: [], updatedAt: "" };
 
 export default function AdminDashboardPage() {
-  const [totalProducts, setTotalProducts] = useState(0);
-  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
-      try {
-        // 1. Gọi API đếm sản phẩm
-        const prodRes = await fetch(`${API_URL}/products/stats/count`);
-        const prodData = await prodRes.json();
+    let active = true;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
-        // FIX LỖI: Bóc tách an toàn và ép kiểu 100% về số (Number)
-        let count = 0;
-        if (typeof prodData.data === "number") count = prodData.data;
-        else if (prodData.data && typeof prodData.data.data === "number")
-          count = prodData.data.data;
-        setTotalProducts(count);
+    async function load() {
+      const [productResult, stockResult] = await Promise.allSettled([
+        fetch(`${API_URL}/products/stats/count`).then((response) => response.json()),
+        fetch(`${API_URL}/ingredients/stats/low-stock`).then((response) => response.json()),
+      ]);
 
-        // 2. Gọi API nguyên liệu sắp hết
-        const ingRes = await fetch(`${API_URL}/ingredients/stats/low-stock`);
-        const ingData = await ingRes.json();
-
-        // FIX LỖI: Đảm bảo dữ liệu nhận được phải là một Mảng (Array)
-        let items = [];
-        if (Array.isArray(ingData.data)) items = ingData.data;
-        else if (ingData.data && Array.isArray(ingData.data.data))
-          items = ingData.data.data;
-        setLowStockItems(items);
-      } catch (error) {
-        console.error("Lỗi tải dữ liệu dashboard:", error);
+      let products: number | null = null;
+      if (productResult.status === "fulfilled") {
+        const payload = productResult.value?.data;
+        if (typeof payload === "number") products = payload;
+        else if (typeof payload?.data === "number") products = payload.data;
       }
-    };
-    fetchDashboardData();
+
+      let lowStock: Metrics["lowStock"] = [];
+      if (stockResult.status === "fulfilled") {
+        const payload = stockResult.value?.data;
+        if (Array.isArray(payload)) lowStock = payload;
+        else if (Array.isArray(payload?.data)) lowStock = payload.data;
+      }
+
+      let orders: number | null = null;
+      let paid: number | null = null;
+      if (localStorage.getItem("token")) {
+        const [allResult, paidResult] = await Promise.allSettled([
+          getAdminOrders(1, ""),
+          getAdminOrders(1, "PAID"),
+        ]);
+        if (allResult.status === "fulfilled") orders = allResult.value.pagination.total;
+        if (paidResult.status === "fulfilled") paid = paidResult.value.pagination.total;
+      }
+
+      if (active) setMetrics({
+        orders, paid, products, lowStock,
+        updatedAt: new Intl.DateTimeFormat("vi-VN", { timeStyle: "short" }).format(new Date()),
+      });
+    }
+
+    void load();
+    return () => { active = false; };
   }, []);
-  return (
-    <div className="p-6 space-y-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black text-slate-800">
-          Chào buổi chiều, Admin! ☀️
-        </h1>
-        <p className="text-slate-500 mt-1">
-          Dưới đây là tình hình hoạt động của quán cà phê hôm nay.
-        </p>
+
+  const cards = [
+    {
+      href: "/admin/orders",
+      code: "01",
+      label: "Đơn hàng",
+      value: metrics.orders === null ? "—" : metrics.orders.toLocaleString("vi-VN"),
+      caption: metrics.orders === null ? "Đăng nhập quản trị để xem" : "Tổng đơn trong hệ thống",
+      icon: ShoppingBag,
+    },
+    {
+      href: "/admin/orders",
+      code: "02",
+      label: "Đã thanh toán",
+      value: metrics.paid === null ? "—" : metrics.paid.toLocaleString("vi-VN"),
+      caption: metrics.paid === null ? "Cần quyền quản trị" : "Đơn đã ghi nhận thanh toán",
+      icon: Wallet,
+    },
+    {
+      href: "/admin/products",
+      code: "03",
+      label: "Món trên menu",
+      value: metrics.products === null ? "—" : metrics.products.toLocaleString("vi-VN"),
+      caption: "Sản phẩm đang có trong thực đơn",
+      icon: Coffee,
+    },
+    {
+      href: "/admin/ingredients",
+      code: "04",
+      label: "Nguyên liệu sắp hết",
+      value: metrics.lowStock.length.toLocaleString("vi-VN"),
+      caption: "Mặt hàng cần bổ sung sớm",
+      icon: CircleAlert,
+      danger: true,
+    },
+  ];
+
+  return <section className="mx-auto max-w-6xl space-y-8">
+    <header className="border-b-[1.5px] border-ink pb-5">
+      <p className="kicker">Sổ quản trị · Tổng quan</p>
+      <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-ink sm:text-4xl">Quán đang chạy thế nào?</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-content-secondary">Theo dõi đơn hàng, thực đơn và tồn kho trong một lượt xem.</p>
+        </div>
+        <span className="rounded-ticket border border-ink/25 bg-white px-3 py-2 text-xs font-semibold text-content-secondary">
+          {metrics.updatedAt ? `Cập nhật ${metrics.updatedAt}` : "Đang tải số liệu…"}
+        </span>
       </div>
+    </header>
 
-      {/* THẺ THỐNG KÊ (KPI CARDS) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Thẻ tĩnh: Chờ Phúc làm Payment */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-              <TrendingUp size={20} />
-            </div>
-            <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-              +12.5%
-            </span>
-          </div>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map(({ href, code, label, value, caption, icon: Icon, danger }) => <Link
+        key={code}
+        href={href}
+        className={`ticket group flex flex-col justify-between p-5 transition-transform hover:-translate-y-0.5 hover:shadow-ticket-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${danger && metrics.lowStock.length > 0 ? "border-danger" : ""}`}
+      >
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-2xl font-black text-slate-800">12,340,000 ₫</h3>
-            <p className="text-sm text-slate-500 font-medium">
-              Tổng doanh thu (Tạm tính)
-            </p>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-content-secondary">{code}</p>
+            <p className="mt-1 text-sm font-semibold text-ink">{label}</p>
           </div>
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-ticket border ${danger && metrics.lowStock.length > 0 ? "border-danger/30 bg-danger-light text-danger" : "border-ink/20 bg-paper text-primary"}`}>
+            <Icon size={18} aria-hidden="true" />
+          </span>
         </div>
-
-        {/* Thẻ tĩnh: Chờ Order/Payment */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
-              <ShoppingBag size={20} />
-            </div>
-            <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-              +8.2%
-            </span>
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-slate-800">158</h3>
-            <p className="text-sm text-slate-500 font-medium">
-              Đơn hàng hoàn tất
-            </p>
-          </div>
+        <div className="mt-5">
+          <p className={`price text-3xl font-bold tracking-[-0.02em] ${danger && metrics.lowStock.length > 0 ? "text-danger" : "text-ink"}`}>{value}</p>
+          <p className="mt-2 text-xs leading-5 text-content-secondary">{caption}</p>
         </div>
-
-        {/* Thẻ của bạn: Thuộc Product Management */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
-              <Coffee size={20} />
-            </div>
-            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
-              Đang bán
-            </span>
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-slate-800">
-              {totalProducts}
-            </h3>
-            <p className="text-sm text-slate-500 font-medium">
-              Tổng món trên Menu
-            </p>
-          </div>
-        </div>
-
-        {/* Thẻ của bạn: Thuộc Ingredient Management */}
-        <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between bg-red-50/30">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-red-100 text-red-600 rounded-lg">
-              <AlertTriangle size={20} />
-            </div>
-            <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full">
-              Cần chú ý
-            </span>
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-red-600">
-              {lowStockItems.length}
-            </h3>
-            <p className="text-sm text-red-500 font-medium">
-              Nguyên liệu sắp hết
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* KHU VỰC CHI TIẾT DƯỚI BẢNG (Dành riêng cho Kho) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <PackageX className="text-red-500" size={24} />
-            <h2 className="text-lg font-bold text-slate-800">
-              Cảnh báo tồn kho
-            </h2>
-          </div>
-
-          <div className="space-y-3">
-            {lowStockItems.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Kho nguyên liệu đang ở mức an toàn.
-              </p>
-            ) : (
-              lowStockItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex justify-between items-center p-3 bg-red-50/50 rounded-xl border border-red-100"
-                >
-                  <span className="font-medium text-slate-700">
-                    {item.name}
-                  </span>
-                  <span className="font-bold text-red-500">
-                    Còn {item.stock} {item.unit}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+      </Link>)}
     </div>
-  );
+
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+      <section aria-labelledby="stock-title" className="ticket p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3 border-b border-ink/15 pb-4">
+          <h2 id="stock-title" className="flex items-center gap-2 text-lg font-bold"><PackageX size={19} className="text-danger" aria-hidden="true" /> Cảnh báo tồn kho</h2>
+          <Link href="/admin/ingredients" className="text-xs font-semibold text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary">Quản lý kho</Link>
+        </div>
+        <div className="divide-y divide-ink/10">
+          {metrics.lowStock.length === 0 ? <p className="py-6 text-sm text-content-secondary">Kho nguyên liệu đang ở mức an toàn.</p> : metrics.lowStock.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 py-3.5">
+            <span className="font-medium text-ink">{item.name}</span>
+            <span className="price whitespace-nowrap rounded-ticket bg-danger-light px-2.5 py-1 text-xs font-bold text-danger">Còn {item.stock.toLocaleString("vi-VN")} {item.unit}</span>
+          </div>)}
+        </div>
+      </section>
+
+      <section aria-labelledby="shortcuts-title" className="ticket p-5 sm:p-6">
+        <div className="border-b border-ink/15 pb-4">
+          <h2 id="shortcuts-title" className="flex items-center gap-2 text-lg font-bold"><ReceiptText size={19} className="text-primary" aria-hidden="true" /> Lối tắt vận hành</h2>
+          <p className="mt-1 text-xs leading-5 text-content-secondary">Những việc thường làm trong ca.</p>
+        </div>
+        <div className="divide-y divide-ink/10">
+          {[
+            { href: "/admin/orders", label: "Xử lý đơn hàng", hint: "Chuẩn bị, sẵn sàng, hoàn thành hoặc hủy đơn." },
+            { href: "/admin/products", label: "Cập nhật thực đơn", hint: "Thêm món mới và chỉnh công thức định lượng." },
+            { href: "/admin/imports", label: "Nhập hàng vào kho", hint: "Ghi phiếu nhập để cộng tồn và cập nhật giá vốn." },
+            { href: "/admin/payments", label: "Đối soát thanh toán", hint: "Kiểm tra giao dịch Mock và ZaloPay Sandbox." },
+          ].map((item) => <Link key={item.href} href={item.href} className="group flex items-center justify-between gap-3 py-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            <span>
+              <span className="block text-sm font-semibold text-ink group-hover:text-primary">{item.label}</span>
+              <span className="mt-0.5 block text-xs leading-5 text-content-secondary">{item.hint}</span>
+            </span>
+            <ArrowUpRight size={17} className="shrink-0 text-content-secondary transition-colors group-hover:text-primary" aria-hidden="true" />
+          </Link>)}
+        </div>
+      </section>
+    </div>
+  </section>;
 }
