@@ -35,9 +35,9 @@ export const orderStatusLabel: Record<OrderStatus, string> = {
   READY: 'Sẵn sàng nhận', COMPLETED: 'Hoàn thành', PAYMENT_FAILED: 'Thanh toán thất bại', CANCELLED: 'Đã hủy',
 };
 
-export function createOrder(items: CartItemDraft[], pointsToUse = 0) {
+export function createOrder(items: CartItemDraft[], pointsToUse = 0, promotionCode?: string) {
   return fetchApi<{ id: string }>('/orders', {
-    method: 'POST', body: JSON.stringify({ items: toOrderItems(items), pointsToUse }),
+    method: 'POST', body: JSON.stringify({ items: toOrderItems(items), pointsToUse, promotionCode: promotionCode?.trim() || undefined }),
   });
 }
 

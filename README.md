@@ -5,39 +5,26 @@
 
 ---
 
-## 🚀 HƯỚNG DẪN KHỞI CHẠY TRÊN MÁY SẠCH (QUICK START)
+## Chạy dự án bằng Docker
 
-Dành cho tất cả các thành viên trong nhóm clone về chạy lần đầu:
+Mở Docker Desktop, sau đó chạy tại thư mục gốc:
 
-### Bước 1: Khởi động Cơ sở dữ liệu PostgreSQL (Docker)
-Đảm bảo bạn đã bật **Docker Desktop**, sau đó mở terminal tại thư mục gốc của dự án (`BrewLite/`):
-```bash
-cp .env.example .env
-cp backend/.env.example backend/.env
-docker compose up -d
+```powershell
+Copy-Item .env.example .env # chỉ tạo lần đầu
+docker compose up --build -d
 ```
-> Lệnh này sẽ tự động tải image PostgreSQL 16 và khởi chạy database `brewlite_db` tại cổng `5432`.
 
-### Bước 2: Khởi động Backend (NestJS)
-Mở một cửa sổ Terminal mới:
-```bash
-cd backend
-npm install
-npm run prisma:generate
-npx prisma migrate deploy
-npm run start:dev
-```
-* **API URL:** `http://localhost:4000/api/v1`
-* **Test API Menu:** `http://localhost:4000/api/v1/products`
+Mở http://localhost:3000; API ở http://localhost:4000/api/v1. Docker chạy cả frontend, backend và PostgreSQL; không cần chạy npm trên máy.
 
-### Bước 3: Khởi động Frontend (Next.js)
-Mở thêm một cửa sổ Terminal khác:
-```bash
-cd frontend
-npm install
-npm run dev
+Các cổng 3000, 4000 và 5433 phải còn trống. Nếu 5433 đã được sử dụng, đổi `POSTGRES_PORT` trong `.env` sang cổng trống. Nếu 3000 hoặc 4000 đã được sử dụng, dừng ứng dụng đang chiếm cổng trước khi chạy.
+
+```powershell
+docker compose ps
+docker compose logs -f
+docker compose down
 ```
-* **Giao diện Web:** `http://localhost:3000`
+
+Dữ liệu PostgreSQL được giữ trong volume khi dùng `docker compose down`. Sau khi thay đổi mã nguồn, chạy lại `docker compose up --build -d`.
 
 ---
 
@@ -73,60 +60,6 @@ Trước khi bắt tay vào code các tính năng tiếp theo, tất cả thành
 1. [Quy chuẩn Git & Commit](docs/git-convention.md)
 2. [Quy chuẩn đặt tên API & Database](docs/naming-convention.md)
 3. [Checklist review code trước khi merge](docs/checklist-review.md)
-
-## Chạy trên Windows
-
-Cài Node.js và Docker Desktop. Từ thư mục gốc, tạo cấu hình rồi khởi động database:
-
-```powershell
-Copy-Item .env.example .env
-Copy-Item backend/.env.example backend/.env
-.\dev-db.cmd
-cd backend
-npm.cmd install
-npm.cmd run prisma:generate
-npx.cmd prisma migrate deploy
-cd ..
-```
-
-Chạy hai lệnh sau trong hai terminal riêng:
-
-```powershell
-.\dev-backend.cmd
-.\dev-frontend.cmd
-```
-
-Mở `http://localhost:3000` cho giao diện hoặc `http://localhost:4000/api/v1/products` cho API. Dùng `.\stop-db.cmd` để dừng PostgreSQL do Docker Compose quản lý. Các tệp `.env`, `backend/.env` và `frontend/.env.local` chứa cấu hình cục bộ và không được commit.
-
-## Cách chạy đơn giản nhất bằng Docker (khuyên dùng cho demo)
-
-Chỉ cần **Docker Desktop** đang mở — không cần chạy npm/terminal riêng.
-
-```powershell
-# 1. Tạo cấu hình (chỉ chạy 1 lần)
-Copy-Item .env.example .env
-Copy-Item backend/.env.example backend/.env
-
-# 2. Build + chạy tất cả trong Docker
-docker compose up --build -d
-```
-
-Mở **http://localhost:3000** là dùng được.
-
-Khi muốn dừng / chạy lại:
-
-```powershell
-docker compose down        # dừng cả 3 service
-docker compose up -d       # chạy lại (không cần --build nếu không đổi code)
-docker compose logs -f     # xem log nếu có lỗi
-```
-
-Lưu ý:
-
-- Lần đầu `--build` sẽ mất vài phút để tải image Postgres + build NestJS/Next.js. Lần sau chạy `up -d` là nhanh.
-- Nếu sửa code trong `backend/` hoặc `frontend/`, muốn thấy kết quả thì chạy lại `docker compose up --build -d`.
-- Dữ liệu DB được lưu trong volume `brewlite_postgres_data` nên `down`/`up` không mất dữ liệu.
-- Muốn xoá sạch dữ liệu: `docker compose down -v`.
 
 ## Tài khoản test
 

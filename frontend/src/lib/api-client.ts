@@ -42,8 +42,8 @@ export async function fetchApi<T>(
     const message = Array.isArray(json.message) ? json.message.join(', ') : json.message;
     let retryAfter: number | undefined;
     if (response.status === 429) {
-      const value = Number(response.headers.get('Retry-After') || json.retryAfter || 15);
-      retryAfter = Number.isFinite(value) && value > 0 ? Math.ceil(value) : 15;
+      const value = Number(response.headers.get('Retry-After') || json.retryAfter || 5);
+      retryAfter = Number.isFinite(value) && value > 0 ? Math.ceil(value) : 5;
       blockRequestCooldown(options.method || 'GET', endpoint, retryAfter);
     }
     throw new ApiError(message || 'Có lỗi xảy ra khi gọi API', response.status, retryAfter);

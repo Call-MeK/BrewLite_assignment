@@ -1,5 +1,7 @@
-import { Controller, Get, Param, Post, Body, Delete } from "@nestjs/common";
+import { Controller, Get, Param, Post, Body, Delete, UseGuards } from "@nestjs/common";
 import { ProductsService } from "./products.service";
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../../common/guards/admin.guard';
 
 @Controller("products")
 export class ProductsController {
@@ -18,6 +20,7 @@ export class ProductsController {
     return this.productsService.getProductDetail(id);
   }
   @Post()
+  @UseGuards(JwtAuthGuard, AdminGuard)
   async create(@Body() createProductDto: any) {
     return {
       success: true,
@@ -36,6 +39,7 @@ export class ProductsController {
   }
 
   @Post(":id/recipe")
+  @UseGuards(JwtAuthGuard, AdminGuard)
   async addRecipeItem(
     @Param("id") id: string,
     @Body() body: { ingredientId: string; quantity: number },
@@ -51,6 +55,7 @@ export class ProductsController {
   }
 
   @Delete(":id/recipe/:ingredientId")
+  @UseGuards(JwtAuthGuard, AdminGuard)
   async removeRecipeItem(
     @Param("id") id: string,
     @Param("ingredientId") ingredientId: string,
@@ -62,6 +67,7 @@ export class ProductsController {
     };
   }
   @Delete(":id")
+  @UseGuards(JwtAuthGuard, AdminGuard)
   async remove(@Param("id") id: string) {
     await this.productsService.remove(id);
     return {

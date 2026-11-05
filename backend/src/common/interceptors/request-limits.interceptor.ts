@@ -37,13 +37,13 @@ export class RequestLimitsInterceptor implements NestInterceptor, OnModuleDestro
     const read = request.method === 'GET' || request.method === 'HEAD';
     const buckets = read ? this.reads : this.writes;
     const key = read ? identity : `${identity}:${controller}:${action}:${request.method}`;
-    const duration = read ? 60000 : 15000;
+    const duration = read ? 60000 : 5000;
     const limit = read ? 60 : 1;
     const now = Date.now();
     let bucket = buckets.get(key);
     if (bucket && bucket.resetAt <= now) { buckets.delete(key); bucket = undefined; }
     if (!bucket) {
-      if (buckets.size >= 10000) this.reject(response, 15);
+      if (buckets.size >= 10000) this.reject(response, 5);
       bucket = { count: 0, resetAt: now + duration };
       buckets.set(key, bucket);
     }

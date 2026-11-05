@@ -1,4 +1,4 @@
-export const REQUEST_COOLDOWN_MS = 15000;
+export const REQUEST_COOLDOWN_MS = 5000;
 const storageKey = 'brewlite-request-cooldowns';
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 

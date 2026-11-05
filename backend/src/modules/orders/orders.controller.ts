@@ -29,6 +29,11 @@ export class OrdersController {
     return { module: 'Orders', status: 'Ready' };
   }
 
+  @Get('promotions')
+  getPromotions() {
+    return this.ordersService.getPromotions();
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard)
   create(

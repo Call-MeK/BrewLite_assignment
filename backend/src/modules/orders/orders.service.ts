@@ -32,6 +32,14 @@ interface RequiredIngredient {
 }
 @Injectable()
 export class OrdersService {
+  getPromotions() {
+    const now = new Date();
+    return this.prisma.promotion.findMany({
+      where: { isActive: true, startDate: { lte: now }, OR: [{ endDate: null }, { endDate: { gte: now } }] },
+      select: { code: true, description: true, discountPercent: true, discountAmount: true, maxDiscount: true, minOrderAmount: true, endDate: true },
+      orderBy: { code: 'asc' },
+    });
+  }
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateOrderDto) {

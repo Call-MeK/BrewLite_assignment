@@ -81,9 +81,10 @@ export async function submitCheckoutOrder(
   userId: string,
   getOrder: (id: string) => Promise<OrderState>,
   cancelOrder: (id: string) => Promise<unknown>,
-  createOrder: (items: CartItemDraft[], pointsToUse: number) => Promise<{ id: string }>,
+  createOrder: (items: CartItemDraft[], pointsToUse: number, promotionCode?: string) => Promise<{ id: string }>,
   pointsToUse: number,
   availablePoints: number,
+  promotionCode?: string,
 ) {
   const pending = await reconcilePendingOrder(storage, userId, getOrder, cancelOrder, true);
   if (pending) return { type: 'resume' as const, order: pending };
@@ -97,7 +98,7 @@ export async function submitCheckoutOrder(
     return { type: 'invalid-points' as const, items };
   }
 
-  const order = await createOrder(items, pointsToUse);
+  const order = await createOrder(items, pointsToUse, promotionCode);
   savePendingOrder(storage, order.id, userId, cartJson);
   return { type: 'created' as const, order };
 }
