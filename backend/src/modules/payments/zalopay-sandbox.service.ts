@@ -111,6 +111,16 @@ export class ZaloPaySandboxService {
     return this.get(id, userId);
   }
 
+  async cancel(id: string, userId: string) {
+    this.gateway.assertReady();
+    const payment = await this.authorized(id, userId);
+    if (payment.order.userId !== userId) throw new ForbiddenException('Chỉ chủ đơn hàng có thể đổi phương thức thanh toán');
+    if (payment.status !== 'PENDING') return this.toResponse(payment);
+    if (!payment.providerOrderId) throw new ConflictException('Không xác định được giao dịch ZaloPay');
+    await this.gateway.cancel(payment.providerOrderId);
+    return this.toResponse(await this.fail(payment.id, 'Đã hủy giao dịch ZaloPay để đổi phương thức thanh toán'));
+  }
+
   async callback(body: unknown) {
     const success = this.gateway.verifyCallback(body);
     await this.settle(success);

@@ -22,13 +22,14 @@ Module({ imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, AuthM
 
 const prisma = new PrismaClient();
 const marker = randomUUID();
-let app, base, owner, other, product, ownerToken, otherToken, cartId, itemId;
+let app, base, owner, other, product, ingredient, ownerToken, otherToken, cartId, itemId;
 
 before(async () => {
   owner = await prisma.user.create({ data: { email: `${marker}-owner@example.test`, passwordHash: 'test' } });
   other = await prisma.user.create({ data: { email: `${marker}-other@example.test`, passwordHash: 'test' } });
+  ingredient = await prisma.ingredient.create({ data: { name: marker, nameKey: marker, unit: 'G', stock: 10 } });
   product = await prisma.product.create({
-    data: { name: `Cart test ${marker}`, basePrice: 10000, stock: 10, sizePrices: { create: { size: 'M' } } },
+    data: { name: `Cart test ${marker}`, basePrice: 10000, stock: 0, sizePrices: { create: { size: 'M', recipeItems: { create: { ingredientId: ingredient.id, quantity: 1 } } } } },
   });
   app = await NestFactory.create(CartTestModule, { logger: false });
   app.setGlobalPrefix('api/v1');
@@ -49,6 +50,7 @@ after(async () => {
   await prisma.cartItem.deleteMany({ where: { cartId: { in: carts.map((c) => c.id) } } });
   await prisma.cart.deleteMany({ where: { userId: { in: ids } } });
   if (product) await prisma.product.delete({ where: { id: product.id } });
+  if (ingredient) await prisma.ingredient.delete({ where: { id: ingredient.id } });
   await prisma.user.deleteMany({ where: { id: { in: ids } } });
   await prisma.$disconnect();
 });
@@ -120,7 +122,7 @@ test('add checks the current quantity and variant if another edit overtakes its 
   };
   const service = new CartService({
     cart: { findUnique: async () => ({ userId: 'owner' }) },
-    product: { findUnique: async () => ({ isAvailable: true, stock: 5, sizePrices: [{ id: 'price' }] }) },
+    product: { findUnique: async () => ({ isAvailable: true, sizePrices: [{ recipeItems: [{ quantity: 1, ingredient: { stock: 5 } }] }] }) },
     $transaction: async (callback) => callback(tx),
   });
   await assert.rejects(

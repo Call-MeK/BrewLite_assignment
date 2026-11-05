@@ -51,7 +51,7 @@ export default function ProductDetailPage() {
         throw new Error('Dữ liệu sản phẩm không đúng định dạng. Vui lòng thử lại sau.');
       }
       setProduct(data);
-      setSelectedSize(data.sizePrices.some((s) => s.size === 'M') ? 'M' : (data.sizePrices[0]?.size ?? ''));
+      setSelectedSize(data.sizePrices.some((s) => s.size === 'M' && s.isAvailable) ? 'M' : (data.sizePrices.find((s) => s.isAvailable)?.size ?? ''));
       setSelectedToppings([]);
     } catch (e) {
       setProduct(null);
@@ -84,7 +84,7 @@ export default function ProductDetailPage() {
   }
 
   function addToCart() {
-    if (!product || !product.isAvailable || !selectedSize || estimatedPrice === null) return;
+    if (!product || !product.isAvailable || !sizePrice?.isAvailable || quantity > sizePrice.availableQuantity || !selectedSize || estimatedPrice === null) return;
     setAdding(true);
     setNotice('');
     try {
@@ -151,9 +151,9 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-3 gap-3">
               {product.sizePrices.map((item) => {
                 const active = selectedSize === item.size;
-                return <button type="button" key={item.size} onClick={() => { setSelectedSize(item.size); setNotice(''); }} className={`rounded-ticket border-[1.5px] p-3 text-left transition ${active ? 'border-primary bg-primary-light' : 'border-ink/20 hover:border-primary/60'}`}>
+                return <button type="button" key={item.size} disabled={!item.isAvailable} onClick={() => { setSelectedSize(item.size); setNotice(''); }} className={`rounded-ticket border-[1.5px] p-3 text-left transition ${active ? 'border-primary bg-primary-light' : 'border-ink/20 hover:border-primary/60'}`}>
                   <span className="price flex items-center justify-between font-extrabold text-navy">{item.size}{active && <Check size={15} className="text-primary" />}</span>
-                  <span className="mt-1 block text-xs text-content-secondary">{item.priceAdjustment > 0 ? '+' + money(item.priceAdjustment) : 'Không phụ thu'}</span>
+                  <span className="mt-1 block text-xs text-content-secondary">{!item.isAvailable ? 'Hết nguyên liệu' : item.priceAdjustment > 0 ? '+' + money(item.priceAdjustment) : 'Không phụ thu'}</span>
                 </button>;
               })}
             </div>}
@@ -190,7 +190,8 @@ export default function ProductDetailPage() {
             <div><p className="text-sm text-content-secondary">Giá ước tính / ly</p><p className="price mt-1 text-2xl font-extrabold text-navy">{estimatedPrice === null ? '—' : money(estimatedPrice)}</p></div>
             <div className="text-right"><p className="text-sm text-content-secondary">Tạm tính</p><p className="price mt-1 text-lg font-bold text-primary">{estimatedPrice === null ? '—' : money(estimatedPrice * quantity)}</p></div>
           </div>
-          <button onClick={addToCart} disabled={!product.isAvailable || !selectedSize || estimatedPrice === null || adding} className="btn-primary mt-5 w-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-40">
+          {sizePrice && <p className="mt-3 text-sm text-content-secondary">Size {sizePrice.size} có thể làm tối đa {sizePrice.availableQuantity} ly từ nguyên liệu hiện có.</p>}
+          <button onClick={addToCart} disabled={!product.isAvailable || !sizePrice?.isAvailable || quantity > sizePrice.availableQuantity || !selectedSize || estimatedPrice === null || adding} className="btn-primary mt-5 w-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-40">
             <ShoppingBag size={19} />{!product.isAvailable ? 'Sản phẩm hiện hết hàng' : adding ? 'Đang thêm...' : 'Thêm món đã chọn'}
           </button>
           <p className="mt-3 text-center text-xs leading-5 text-content-secondary">Giá trên trang là giá ước tính. Giá cuối cùng sẽ được hệ thống xác nhận khi đặt hàng.</p>

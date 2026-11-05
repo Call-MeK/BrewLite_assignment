@@ -51,7 +51,7 @@ export default function MenuPage() {
               Tìm món hợp gu của bạn
             </h1>
             <p className="mt-2 max-w-md text-sm leading-6 text-content-secondary">
-              {loading ? 'Đang tải thực đơn…' : `${products.length} món đang phục vụ. Chọn size và topping ở bước tiếp theo.`}
+              {loading ? 'Đang tải thực đơn…' : `${products.filter((product) => product.isAvailable).length} món đang phục vụ. Chọn size và topping ở bước tiếp theo.`}
             </p>
           </div>
 
@@ -178,7 +178,7 @@ export default function MenuPage() {
                   className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShoppingBag size={17} aria-hidden="true" />
-                  {product.sizePrices?.length ? 'Đặt mua' : 'Chưa có size'}
+                  {!product.isAvailable ? 'Hết món' : product.sizePrices?.length ? 'Đặt mua' : 'Chưa có size'}
                 </button>
               </div>
             </article>

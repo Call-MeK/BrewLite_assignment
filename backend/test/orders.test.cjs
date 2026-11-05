@@ -18,7 +18,8 @@ test('order state machine rejects transitions out of terminal states', () => {
 test('create calculates prices on the server and reserves product and topping stock', async () => {
   let createOrderArgs;
   const tx = {
-    recipeIngredient: { findMany: async () => [] },
+    recipeIngredient: { findMany: async () => [{ ingredientId: 'ingredient-1', quantity: 1 }] },
+    ingredient: { findUnique: async () => ({ id: 'ingredient-1', stock: 100, version: 0 }), updateMany: async () => ({ count: 1 }) },
     product: {
       findMany: async () => [{
         id: 'product-1',
@@ -91,7 +92,6 @@ test('create calculates prices on the server and reserves product and topping st
   assert.equal(createOrderArgs.data.items.create[0].unitPrice, 45000);
   assert.equal(createOrderArgs.data.items.create[0].lineTotal, 110000);
   assert.equal(createOrderArgs.data.statusHistory.create.fromStatus, null);
-  assert.equal(tx.product.updateMany.mock.calls[0].arguments[0].where.stock.gte, 2);
   assert.equal(tx.topping.updateMany.mock.calls[0].arguments[0].where.stock.gte, 2);
 });
 
@@ -103,7 +103,8 @@ test('create redeems 20 points for 2000 VND using an atomic balance check', asyn
     items: [], statusHistory: [],
   }));
   const tx = {
-    recipeIngredient: { findMany: async () => [] },
+    recipeIngredient: { findMany: async () => [{ ingredientId: 'ingredient-1', quantity: 1 }] },
+    ingredient: { findUnique: async () => ({ id: 'ingredient-1', stock: 100, version: 0 }), updateMany: async () => ({ count: 1 }) },
     product: {
       findMany: async () => [{ id: 'coffee', name: 'Coffee', basePrice: 30000, version: 1, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }] }],
       updateMany: async () => ({ count: 1 }),
@@ -129,7 +130,8 @@ test('create redeems 20 points for 2000 VND using an atomic balance check', asyn
 
 test('create rejects invalid or unaffordable point redemption', async () => {
   const tx = {
-    recipeIngredient: { findMany: async () => [] },
+    recipeIngredient: { findMany: async () => [{ ingredientId: 'ingredient-1', quantity: 1 }] },
+    ingredient: { findUnique: async () => ({ id: 'ingredient-1', stock: 100, version: 0 }), updateMany: async () => ({ count: 1 }) },
     product: {
       findMany: async () => [{ id: 'coffee', name: 'Coffee', basePrice: 1000, version: 1, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }] }],
       updateMany: async () => ({ count: 1 }),
@@ -148,7 +150,8 @@ test('create rejects invalid or unaffordable point redemption', async () => {
 test('create rejects toppings on coffee even when the topping exists', async () => {
   const createOrder = mock.fn(async () => ({}));
   const tx = {
-    recipeIngredient: { findMany: async () => [] },
+    recipeIngredient: { findMany: async () => [{ ingredientId: 'ingredient-1', quantity: 1 }] },
+    ingredient: { findUnique: async () => ({ id: 'ingredient-1', stock: 100, version: 0 }), updateMany: async () => ({ count: 1 }) },
     product: { findMany: async () => [{
       id: 'coffee', name: 'Coffee', basePrice: 30000, stock: 10, version: 1,
       category: { slug: 'ca-phe' }, sizePrices: [{ size: ProductSize.M, priceAdjustment: 0 }],

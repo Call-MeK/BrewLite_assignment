@@ -40,7 +40,7 @@ export class ZaloPaySandboxGateway {
     redirect.pathname = `${redirect.pathname.replace(/\/$/, '')}/orders/${encodeURIComponent(payment.orderId)}/payment`;
     const embed = JSON.stringify({
       redirecturl: redirect.href,
-      preferred_payment_method: [payment.method === 'BANK_CARD' ? 'domestic_card' : 'zalopay_wallet'],
+      preferred_payment_method: payment.method === 'BANK_CARD' ? ['domestic_card', 'account'] : ['zalopay_wallet'],
     });
     const item = '[]';
     const appTime = payment.createdAt.getTime();
@@ -90,6 +90,15 @@ export class ZaloPaySandboxGateway {
       processing: result.return_code === 3 ? true : (result.is_processing as boolean | undefined) ?? null,
       success: result.return_code === 1 ? this.success(result, providerOrderId) : null,
     };
+  }
+
+  async cancel(providerOrderId: string) {
+    const settings = this.settings();
+    const result = await this.post('cancel', {
+      app_id: settings.appId, app_trans_id: providerOrderId,
+      mac: this.mac(settings.key1, `${settings.appId}|${providerOrderId}|${settings.key1}`),
+    });
+    if (result.return_code !== 1) throw new ServiceUnavailableException('ZaloPay chưa xác nhận hủy giao dịch. Vui lòng kiểm tra kết quả trước khi thử lại.');
   }
 
   verifyCallback(body: unknown): ZaloPaySuccess {
@@ -147,7 +156,7 @@ export class ZaloPaySandboxGateway {
     }
   }
 
-  private async post(path: 'create' | 'query', body: Record<string, string>) {
+  private async post(path: 'create' | 'query' | 'cancel', body: Record<string, string>) {
     try {
       const response = await fetch(`https://sb-openapi.zalopay.vn/v2/${path}`, {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

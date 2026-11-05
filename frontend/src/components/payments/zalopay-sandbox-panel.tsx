@@ -5,7 +5,7 @@ import { Wallet } from 'lucide-react';
 import { useRequestCooldown } from '@/components/use-request-cooldown';
 import { finishPaidPendingOrder } from '@/lib/pending-order';
 import { getOrder, type OrderDetail, type PaymentMethod } from '@/services/order.service';
-import { createZaloPay, getLatestZaloPay, getZaloPayConfig, syncZaloPay, type ZaloPayPayment } from '@/services/zalopay.service';
+import { cancelZaloPay, createZaloPay, getLatestZaloPay, getZaloPayConfig, syncZaloPay, type ZaloPayPayment } from '@/services/zalopay.service';
 
 export function ZaloPaySandboxPanel({ order, onOrderUpdated, onPendingChange, onPaymentChange }: {
   order: OrderDetail;
@@ -149,6 +149,26 @@ export function ZaloPaySandboxPanel({ order, onOrderUpdated, onPendingChange, on
     }
   }
 
+  async function changeMethod() {
+    if (!payment || busy || request.current) return;
+    const controller = new AbortController();
+    request.current = controller;
+    const token = localStorage.getItem('token');
+    const current = () => !controller.signal.aborted && localStorage.getItem('token') === token;
+    setBusy(true);
+    setError('');
+    try {
+      const next = await cancelZaloPay(payment.id, controller.signal);
+      const updated = await getOrder(order.id);
+      if (current()) publish(next, updated);
+    } catch (cause) {
+      if (current()) setError(cause instanceof Error ? cause.message : 'Không thể xác nhận hủy giao dịch.');
+    } finally {
+      if (request.current === controller) request.current = null;
+      if (current()) setBusy(false);
+    }
+  }
+
   const active = payment?.status === 'PENDING' || payment?.status === 'SUCCESS';
   const payable = order.status === 'PENDING' || order.status === 'PAYMENT_FAILED';
   return <section aria-labelledby="zalopay-title" className="ticket p-6 sm:p-8">
@@ -163,7 +183,9 @@ export function ZaloPaySandboxPanel({ order, onOrderUpdated, onPendingChange, on
       {payment.reference && <p className="break-all text-xs text-content-secondary">Mã giao dịch ZaloPay: {payment.reference}</p>}
       {payment.reviewReason && <p className="text-ink">{payment.reviewReason}. Vui lòng liên hệ quản trị viên.</p>}
       {payment.failureReason && <p>{payment.failureReason}</p>}
-      {payment.paymentUrl && payment.status === 'PENDING' && enabled && <a href={payment.paymentUrl} className="btn-primary px-4">Mở cổng ZaloPay Sandbox</a>}
+      {payment.paymentUrl && payment.status === 'PENDING' && enabled && <a href={payment.paymentUrl} className="btn-primary px-4">Tiếp tục thanh toán trên ZaloPay</a>}
+      {payment.status === 'PENDING' && enabled && payable && <button type="button" disabled={busy} onClick={() => void changeMethod()} className="btn-outline ml-2 disabled:opacity-50">{busy ? 'Đang kiểm tra…' : 'Đổi phương thức thanh toán'}</button>}
+      {!payment.paymentUrl && payment.status === 'PENDING' && <p className="text-sm">Chưa nhận được liên kết thanh toán. Hãy chọn Kiểm tra kết quả trước khi thử lại.</p>}
       {enabled && <button type="button" disabled={busy || syncCooldown.blocked} onClick={() => void act(false)} className="ml-2 min-h-11 px-2 font-semibold text-primary disabled:opacity-50">{busy ? 'Đang kiểm tra…' : syncCooldown.label || 'Kiểm tra kết quả'}</button>}
       {payment.status === 'PENDING' && <p className="text-xs text-content-secondary">Trạng thái tự cập nhật mỗi 15 giây khi mở trang và khi quay lại tab. Chọn “Kiểm tra kết quả” để truy vấn ZaloPay nếu chưa nhận được xác nhận.</p>}
     </div>}

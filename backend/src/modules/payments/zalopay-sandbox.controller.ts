@@ -44,6 +44,14 @@ export class ZaloPaySandboxController {
     return this.payments.sync(id, req.user.sub);
   }
 
+  @Post(':id/cancel')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @Header('Cache-Control', 'no-store')
+  cancel(@Req() req: Request & { user: JwtPayload }, @Param('id') id: string) {
+    return this.payments.cancel(id, req.user.sub);
+  }
+
   @Post('callback')
   async callback(@Body() body: unknown, @Res() response: Response) {
     // ZaloPay needs its own response format, outside the application's API envelope.

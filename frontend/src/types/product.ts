@@ -3,6 +3,8 @@ export type ProductSize = 'S' | 'M' | 'L';
 export interface ProductSizePrice {
   size: ProductSize;
   priceAdjustment: number;
+  isAvailable: boolean;
+  availableQuantity: number;
 }
 
 export interface ProductTopping {

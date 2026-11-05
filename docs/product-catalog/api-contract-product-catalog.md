@@ -3,10 +3,12 @@ Thành viên: Võ Thị Thủy
 Phân vai: Owner Feature
 13/10/2026  
 1. TỔNG QUAN
-API cung cấp danh sách toàn bộ sản phẩm đồ uống đang mở bán và còn hàng để Frontend hiển thị trên trang menu.
+API cung cấp danh sách sản phẩm để Frontend hiển thị, bao gồm cả món đang hết hàng.
 Phương thức: `GET`
 Đường dẫn: `/api/v1/products`
-Backend lọc theo điều kiện: `Product.isAvailable === true` VÀ `Product.stock > 0`.
+Mỗi size có `availableQuantity` tính từ tồn nguyên liệu và định lượng công thức. Size chưa có công thức không xuất hiện trên menu hoặc chi tiết sản phẩm; size đã có công thức nhưng thiếu nguyên liệu hiển thị là hết hàng. Món khả dụng khi đang mở bán và có ít nhất một size khả dụng. Tồn kho được kiểm tra lại khi đặt đơn.
+
+Quản trị viên dùng `GET /api/v1/products/:id/size-prices` để xem tất cả size, kể cả size chưa có công thức; `PUT` cùng đường dẫn nhận `{ "sizes": [{ "size": "M", "priceAdjustment": 5000 }] }`. Phụ thu là số nguyên VNĐ từ 0 đến 1.000.000.000; mỗi size chỉ xuất hiện một lần. Cả hai API yêu cầu JWT và quyền Admin. Giá đơn mới do backend tính lại; đơn đã tạo giữ giá tại thời điểm đặt.
 Toàn bộ thao tác tìm kiếm theo tên (không phân biệt hoa/thường, không phân biệt dấu tiếng Việt) và lọc theo danh mục đều thực hiện tại Frontend trên danh sách đã tải về.
 Không gửi query parameters (`?search=...`, `?category=...`) lên Backend trong phiên bản MVP.
 

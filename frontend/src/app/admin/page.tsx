@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Wallet,
 } from "lucide-react";
+import { fetchApi } from '@/lib/api-client';
 import { getAdminOrders } from "@/services/admin-order.service";
 
 type Metrics = {
@@ -33,7 +34,7 @@ export default function AdminDashboardPage() {
     async function load() {
       const [productResult, stockResult] = await Promise.allSettled([
         fetch(`${API_URL}/products/stats/count`).then((response) => response.json()),
-        fetch(`${API_URL}/ingredients/stats/low-stock`).then((response) => response.json()),
+        fetchApi<{ data: Metrics['lowStock'] }>('/ingredients/stats/low-stock').then((data) => ({ data })),
       ]);
 
       let products: number | null = null;

@@ -57,11 +57,12 @@ export default function OrdersPage() {
       <Link href="/menu" className="btn-primary mt-5">Khám phá thực đơn</Link>
     </div> : <>
       <div className="space-y-3">
-        {orders.map((order) => <Link key={order.id} href={`/orders/${order.id}`} className="ticket flex min-h-28 items-center justify-between gap-4 p-5 transition-transform hover:-translate-y-0.5 hover:shadow-ticket-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+        {orders.map((order) => <Link key={order.id} href={['PENDING', 'PAYMENT_FAILED'].includes(order.status) ? `/orders/${order.id}/payment` : `/orders/${order.id}`} className="ticket flex min-h-28 items-center justify-between gap-4 p-5 transition-transform hover:-translate-y-0.5 hover:shadow-ticket-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
           <div>
             <p className="font-bold text-navy">Đơn #{order.orderNumber}</p>
             <p className="mt-1 text-sm text-content-secondary">{date(order.createdAt)}, {order.itemCount} món</p>
             <p className="mt-2 text-sm font-semibold text-primary">{orderStatusLabel[order.status] ?? order.status}</p>
+            {['PENDING', 'PAYMENT_FAILED'].includes(order.status) && <p className="mt-1 text-sm font-semibold text-primary underline">Tiếp tục thanh toán</p>}
           </div>
           <div className="flex items-center gap-3 text-right">
             <span className="price font-bold text-navy">{money(order.finalAmount)}</span>

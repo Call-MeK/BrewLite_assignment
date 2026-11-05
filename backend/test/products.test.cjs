@@ -5,6 +5,29 @@ const { METHOD_METADATA, PATH_METADATA } = require('@nestjs/common/constants');
 const { ProductsController } = require('../src/modules/products/products.controller');
 const { ProductsService } = require('../src/modules/products/products.service');
 
+test('menu and product details show sold out sizes when ingredients are insufficient', async () => {
+  const product = {
+    id: 'tea', name: 'Tea', basePrice: new Decimal(20000), imageUrl: null,
+    isAvailable: true, stock: 2, category: { name: 'Tea', slug: 'tea' },
+    sizePrices: [
+      { size: 'S', priceAdjustment: new Decimal(0), recipeItems: [{ quantity: new Decimal(10), ingredient: { stock: 12 } }] },
+      { size: 'M', priceAdjustment: new Decimal(0), recipeItems: [{ quantity: new Decimal(20), ingredient: { stock: 12 } }] },
+      { size: 'L', priceAdjustment: new Decimal(0), recipeItems: [] },
+    ],
+  };
+  const service = new ProductsService({ product: { findMany: async () => [product], findUnique: async () => product }, topping: { findMany: async () => [] } });
+  const [menu] = await service.getProducts();
+  assert.equal(menu.isAvailable, true);
+  assert.deepEqual(menu.sizePrices.map(s => s.isAvailable), [true, false]);
+  assert.deepEqual(menu.sizePrices.map(s => s.availableQuantity), [1, 0]);
+  assert.deepEqual(menu.sizePrices.map(s => s.size), ['S', 'M']);
+  assert.deepEqual((await service.getProductDetail('tea')).sizePrices.map(s => s.isAvailable), [true, false]);
+  assert.deepEqual((await service.getProductDetail('tea')).sizePrices.map(s => s.size), ['S', 'M']);
+  product.sizePrices[0].recipeItems[0].ingredient.stock = 0;
+  assert.equal((await service.getProducts())[0].isAvailable, false);
+  assert.equal((await service.getProductDetail('tea')).isAvailable, false);
+});
+
 test('GET /products returns the public menu list', async () => {
   const products = [{ id: 'coffee', name: 'Americano' }];
   const getProducts = mock.fn(async () => products);
@@ -37,7 +60,7 @@ test('getProducts selects the sellable menu and returns only public fields', asy
     stock: 30,
     version: 1,
     category: { name: 'Cà phê' },
-    sizePrices: [{ size: 'M', priceAdjustment: new Decimal(5000) }],
+    sizePrices: [{ size: 'M', priceAdjustment: new Decimal(5000), recipeItems: [{ quantity: new Decimal(1), ingredient: { stock: 30 } }] }],
   }]);
   const service = new ProductsService({ product: { findMany } });
 
@@ -48,10 +71,10 @@ test('getProducts selects the sellable menu and returns only public fields', asy
     imageUrl: null,
     isAvailable: true,
     categoryName: 'Cà phê',
-    sizePrices: [{ size: 'M', priceAdjustment: 5000 }],
+    sizePrices: [{ size: 'M', priceAdjustment: 5000, isAvailable: true, availableQuantity: 30 }],
   }]);
   const query = findMany.mock.calls[0].arguments[0];
-  assert.deepEqual(query.where, { isAvailable: true, stock: { gt: 0 } });
+  assert.equal(query.where, undefined);
   assert.deepEqual(query.orderBy, { name: 'asc' });
   assert.deepEqual(query.include.sizePrices.orderBy, { priceAdjustment: 'asc' });
 });
@@ -59,7 +82,7 @@ test('getProducts selects the sellable menu and returns only public fields', asy
 test('getProducts supports products without a category or sizes and an empty menu', async () => {
   const findMany = mock.fn(async () => [{
     id: 'tea', name: 'Tea', basePrice: new Decimal(20000),
-    imageUrl: null, isAvailable: true, category: null, sizePrices: [],
+    imageUrl: null, isAvailable: true, stock: 2, category: null, sizePrices: [],
   }]);
   const service = new ProductsService({ product: { findMany } });
   const [product] = await service.getProducts();
@@ -85,7 +108,7 @@ test('coffee has size only while other drinks offer the three supported toppings
   ]);
   const product = {
     id: 'drink', name: 'Drink', imageUrl: null, basePrice: new Decimal(30000),
-    isAvailable: true, stock: 10, sizePrices: [{ size: 'M', priceAdjustment: new Decimal(5000) }],
+    isAvailable: true, stock: 10, sizePrices: [{ size: 'M', priceAdjustment: new Decimal(5000), recipeItems: [{ quantity: new Decimal(1), ingredient: { stock: 30 } }] }],
     category: { slug: 'ca-phe' },
   };
   const service = new ProductsService({

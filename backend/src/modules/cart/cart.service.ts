@@ -128,9 +128,10 @@ export class CartService {
   ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
-      select: { isAvailable: true, stock: true, category: { select: { slug: true } }, sizePrices: { where: { size }, select: { id: true } } },
+      select: { isAvailable: true, category: { select: { slug: true } }, sizePrices: { where: { size }, select: { recipeItems: { select: { quantity: true, ingredient: { select: { stock: true } } } } } } },
     });
-    if (!product?.isAvailable || product.stock < 1 || product.sizePrices.length === 0) {
+    const recipes = product?.sizePrices[0]?.recipeItems;
+    if (!product?.isAvailable || !recipes?.length || recipes.some((item) => item.ingredient.stock < Number(item.quantity))) {
       throw new BadRequestException("Sản phẩm hoặc kích cỡ không khả dụng");
     }
     if (toppingIds.length > 0) {

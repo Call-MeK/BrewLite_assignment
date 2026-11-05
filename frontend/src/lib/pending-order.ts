@@ -7,7 +7,7 @@ const keys = {
   savedCart: 'brewlite-cart',
 } as const;
 
-type OrderState = { id: string; status: string };
+type OrderState = { id: string; status: string; finalAmount?: number };
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 export function savePendingOrder(storage: StorageLike, orderId: string, userId: string, cart: string) {

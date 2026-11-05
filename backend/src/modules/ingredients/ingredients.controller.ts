@@ -1,4 +1,3 @@
-import { IngredientUnit } from "@prisma/client";
 import {
   Controller,
   Get,
@@ -7,22 +6,23 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from "@nestjs/common";
 import { IngredientsService } from "./ingredients.service";
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../../common/guards/admin.guard';
+import { CreateIngredientDto } from './dto/create-ingredient.dto';
+import { UpdateIngredientDto } from './dto/update-ingredient.dto';
 
 @Controller("ingredients")
+@UseGuards(JwtAuthGuard, AdminGuard)
 export class IngredientsController {
   constructor(private readonly ingredientsService: IngredientsService) {}
 
   @Post()
   create(
     @Body()
-    createIngredientDto: {
-      name: string;
-      unit: IngredientUnit;
-      stock: number;
-      price: number;
-    },
+    createIngredientDto: CreateIngredientDto,
   ) {
     return this.ingredientsService.create(createIngredientDto);
   }
@@ -41,7 +41,7 @@ export class IngredientsController {
   }
 
   @Patch(":id")
-  update(@Param("id") id: string, @Body() updateIngredientDto: any) {
+  update(@Param("id") id: string, @Body() updateIngredientDto: UpdateIngredientDto) {
     return this.ingredientsService.update(id, updateIngredientDto);
   }
 

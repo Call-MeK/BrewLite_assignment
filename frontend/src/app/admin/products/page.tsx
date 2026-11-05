@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from 'next/link';
 import { BookOpen, Plus, Trash2, X } from "lucide-react";
 import {
   getAllProducts,
   createProduct,
+  deleteProduct,
   getAllCategories,
   getProductRecipe,
   addRecipeItem,
   removeRecipeItem,
 } from "@/services/product.service";
 import { ingredientsService } from "@/services/ingredients.service";
+import { getSizePrices, updateSizePrices, type SizeAdjustment } from '@/services/product.service';
 
 const smallButton = "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-ticket border border-ink/25 bg-white px-3 text-xs font-semibold text-ink transition-colors hover:border-ink hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
@@ -18,6 +21,11 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [ingredients, setIngredients] = useState<any[]>([]);
+  const [priceProduct, setPriceProduct] = useState<{ id: string; name: string; basePrice: number } | null>(null);
+  const [sizePrices, setSizePrices] = useState<{ size: SizeAdjustment['size']; priceAdjustment: string }[]>([]);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [priceError, setPriceError] = useState('');
+  const [priceNotice, setPriceNotice] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -38,6 +46,32 @@ export default function AdminProductsPage() {
     loadCategories();
     loadIngredients();
   }, []);
+
+  async function editPrices(product: { id: string; name: string; basePrice: number }) {
+    setPriceProduct(product);
+    setSizePrices([]);
+    setPriceNotice('');
+    setPriceError('');
+    setPriceLoading(true);
+    try { setSizePrices((await getSizePrices(product.id)).map((item) => ({ ...item, priceAdjustment: String(item.priceAdjustment) }))); }
+    catch (error) { setPriceError(error instanceof Error ? error.message : 'Không tải được phụ thu.'); }
+    finally { setPriceLoading(false); }
+  }
+
+  async function savePrices(event: React.FormEvent) {
+    event.preventDefault();
+    if (!priceProduct || priceLoading || !sizePrices.length) return;
+    setPriceLoading(true);
+    setPriceError('');
+    setPriceNotice('');
+    try {
+      const saved = await updateSizePrices(priceProduct.id, sizePrices.map((item) => ({ ...item, priceAdjustment: Number(item.priceAdjustment) })));
+      setSizePrices(saved.map((item) => ({ ...item, priceAdjustment: String(item.priceAdjustment) })));
+      setPriceNotice('Đã lưu phụ thu. Giá mới áp dụng khi khách tạo đơn.');
+      await loadProducts();
+    } catch (error) { setPriceError(error instanceof Error ? error.message : 'Không thể lưu phụ thu.'); }
+    finally { setPriceLoading(false); }
+  }
 
   const loadProducts = async () => {
     try {
@@ -119,14 +153,9 @@ export default function AdminProductsPage() {
     if (!confirm("Bạn có chắc chắn muốn xóa sản phẩm này? Toàn bộ công thức đi kèm cũng sẽ bị xóa.")) return;
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
-      const res = await fetch(`${API_URL}/products/${id}`, { method: "DELETE" });
-
-      if (res.ok) {
-        setProducts(products.filter((item) => item.id !== id));
-      } else {
-        alert("Có lỗi xảy ra khi xóa sản phẩm.");
-      }
+      await deleteProduct(id);
+      setProducts(products.filter((item) => item.id !== id));
+      setPriceProduct((current) => current?.id === id ? null : current);
     } catch (error) {
       console.error("Lỗi xóa sản phẩm:", error);
     }
@@ -174,9 +203,10 @@ export default function AdminProductsPage() {
                   <td className="price whitespace-nowrap px-5 py-4 font-semibold">{item.basePrice?.toLocaleString("vi-VN")} ₫</td>
                   <td className="px-5 py-4">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => openRecipeModal(item)} className={smallButton} title="Cài đặt công thức">
+                      <Link href="/admin/recipes" className={smallButton} title="Cài đặt công thức theo size">
                         <BookOpen size={15} aria-hidden="true" /> Công thức
-                      </button>
+                      </Link>
+                      <button type="button" onClick={() => void editPrices(item)} disabled={priceLoading} className={smallButton}>Phụ thu size</button>
                       <button onClick={() => handleDelete(item.id)} aria-label={`Xóa ${item.name}`} className={`${smallButton} px-2.5 text-danger hover:border-danger`}>
                         <Trash2 size={15} aria-hidden="true" />
                       </button>
@@ -195,6 +225,16 @@ export default function AdminProductsPage() {
           <span className="font-semibold text-ink">{products.length} sản phẩm</span>
         </div>
       </div>
+
+      {priceProduct && <section aria-labelledby="size-prices-title" className="ticket p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="size-prices-title" className="font-display text-xl font-bold text-navy">Phụ thu theo size · {priceProduct.name}</h2><p className="mt-1 text-sm text-content-secondary">Giá gốc {priceProduct.basePrice.toLocaleString('vi-VN')} ₫. Các size chưa có công thức vẫn có thể thiết lập giá.</p></div><button type="button" onClick={() => setPriceProduct(null)} disabled={priceLoading} className={smallButton}>Đóng</button></div>
+        {priceError && <p role="alert" className="mt-4 text-sm text-danger">{priceError}</p>}
+        {priceNotice && <p role="status" className="mt-4 text-sm text-success">{priceNotice}</p>}
+        {priceLoading && !sizePrices.length ? <p role="status" className="mt-4 text-sm">Đang tải phụ thu...</p> : <form onSubmit={savePrices} className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">{sizePrices.map((item, index) => <label key={item.size} className="block text-sm font-semibold text-navy">Size {item.size} · Phụ thu (₫)<input required type="number" min="0" max="1000000000" step="1" value={item.priceAdjustment} disabled={priceLoading} onChange={(event) => { const value = event.target.value; setSizePrices((current) => current.map((price, i) => i === index ? { ...price, priceAdjustment: value } : price)); }} className="field mt-2" /><span className="mt-1 block text-xs font-normal text-content-secondary">Giá bán: {(priceProduct.basePrice + (Number(item.priceAdjustment) || 0)).toLocaleString('vi-VN')} ₫</span></label>)}</div>
+          <button type="submit" disabled={priceLoading || !sizePrices.length || sizePrices.some((item) => item.priceAdjustment === '' || !Number.isSafeInteger(Number(item.priceAdjustment)) || Number(item.priceAdjustment) < 0 || Number(item.priceAdjustment) > 1000000000)} className="btn-primary disabled:opacity-50">{priceLoading ? 'Đang lưu...' : 'Lưu phụ thu'}</button>
+        </form>}
+      </section>}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink/45 p-4 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-labelledby="new-product-title">
@@ -216,6 +256,7 @@ export default function AdminProductsPage() {
               <label className="block text-xs font-semibold text-content-secondary">Giá gốc (VNĐ)
                 <input required type="number" min="0" className="field mt-2" onChange={(e) => setFormData({ ...formData, basePrice: Number(e.target.value) })} />
               </label>
+              <p className="text-sm text-content-secondary">Sau khi tạo, hãy thiết lập công thức cho từng size. Số ly có thể bán được tính từ tồn nguyên liệu.</p>
               <div className="flex justify-end gap-2 border-t border-dashed border-ink/25 pt-5">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="inline-flex min-h-11 items-center rounded-ticket px-4 text-sm font-semibold text-content-secondary hover:bg-paper">Hủy</button>
                 <button type="submit" className="btn-primary min-h-11 px-4 text-white">Lưu sản phẩm</button>

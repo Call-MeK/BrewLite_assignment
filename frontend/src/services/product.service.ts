@@ -1,5 +1,16 @@
 import { fetchApi } from "@/lib/api-client";
 import type { ProductDetail, ProductSummary } from "@/types/product";
+import type { ProductSize } from '@/types/product';
+
+export type SizeAdjustment = { size: ProductSize; priceAdjustment: number };
+
+export function getSizePrices(id: string) {
+  return fetchApi<SizeAdjustment[]>(`/products/${encodeURIComponent(id)}/size-prices`, { cache: 'no-store' });
+}
+
+export function updateSizePrices(id: string, sizes: SizeAdjustment[]) {
+  return fetchApi<SizeAdjustment[]>(`/products/${encodeURIComponent(id)}/size-prices`, { method: 'PUT', body: JSON.stringify({ sizes }) });
+}
 
 export async function getProducts(): Promise<ProductSummary[]> {
   return fetchApi<ProductSummary[]>("/products");

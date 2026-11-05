@@ -1,5 +1,9 @@
 # API Contract – Payment v1.2
 
+## Đổi phương thức thanh toán ZaloPay Sandbox
+
+`POST /api/v1/payments/zalopay/:id/cancel` yêu cầu JWT của chủ đơn và hủy giao dịch đang chờ ở ZaloPay trước khi cho phép chọn phương thức khác. Nếu ZaloPay xác nhận hủy, giao dịch chuyển `FAILED`, đơn chuyển `PAYMENT_FAILED` và có thể tạo lượt thanh toán mới. Nếu kết quả hủy không xác định hoặc bị từ chối, giao dịch vẫn chờ và khách cần kiểm tra lại trạng thái; không tạo giao dịch mới dựa trên giả định đã hủy.
+
 > Triển khai v1.2 dùng mock cục bộ, không có gateway thật, QR, webhook, refund hoặc scheduler.
 > Order hiện chưa có API tạo/hủy. Khi demo, cần một Order đã lưu trong DB thuộc user đăng nhập.
 > `OrdersService.transition()` hiện chỉ triển khai ba chuyển tiếp phục vụ Payment; không thay thế toàn bộ Order module.

@@ -35,3 +35,7 @@ export function createZaloPay(orderId: string, method: PaymentMethod, key: strin
 export function syncZaloPay(id: string, signal?: AbortSignal) {
   return fetchApi<ZaloPayPayment>(`/payments/zalopay/${encodeURIComponent(id)}/sync`, { method: 'POST', signal, cache: 'no-store' });
 }
+
+export function cancelZaloPay(id: string, signal?: AbortSignal) {
+  return fetchApi<ZaloPayPayment>(`/payments/zalopay/${encodeURIComponent(id)}/cancel`, { method: 'POST', signal, cache: 'no-store' });
+}
